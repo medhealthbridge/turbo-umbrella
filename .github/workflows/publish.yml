@@ -1,27 +1,43 @@
-name: Publish next book to Gumroad
+name: Publish
 
+# Wakes up every hour and asks config.yml whether this is the moment.
+# You change the posting time in config.yml (in your own time zone) — not here.
+#
+# GitHub's scheduled runs are best-effort: they are routinely a few minutes
+# late and are occasionally skipped under load. Checking hourly against a
+# window in config.yml is what turns a skipped run into a slightly late post
+# instead of a missed day.
 on:
   schedule:
-    # 09:13 Singapore / Manila time (01:13 UTC), daily.
-    - cron: "13 1 * * *"
+    - cron: "7 * * * *"
   workflow_dispatch:
     inputs:
+      command:
+        description: "What to do"
+        type: choice
+        required: false
+        default: run
+        options: [run, scan, plan, dashboard]
       slug:
-        description: "Publish one specific book slug now (leave blank for the next in queue)"
+        description: "Publish one specific book (blank = next in the queue)"
         required: false
         default: ""
+      force:
+        description: "Ignore the schedule window and publish now"
+        type: boolean
+        required: false
+        default: false
       dry_run:
-        description: "Dry run - do everything except actually create the product"
+        description: "Dry run — build everything, send nothing"
         type: boolean
         required: false
         default: false
 
-# Allow the job to commit the updated state file back to the repo.
 permissions:
   contents: write
 
 concurrency:
-  group: gumroad-publish
+  group: autopost-publish
   cancel-in-progress: false
 
 jobs:
@@ -30,54 +46,69 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: pip
 
-      - name: Install Python dependencies
+      - name: Install dependencies
         run: pip install --quiet -r requirements.txt
 
-      - name: Install Gumroad CLI
+      - name: Install the Gumroad CLI
         run: |
           set -euo pipefail
           if curl -fsSL https://gumroad.com/install-cli.sh -o /tmp/install-gumroad.sh; then
             bash /tmp/install-gumroad.sh
           else
-            echo "Install script unavailable, falling back to go install"
+            echo "Install script unavailable — falling back to go install"
             go install github.com/antiwork/gumroad-cli/cmd/gumroad@latest
             echo "$HOME/go/bin" >> "$GITHUB_PATH"
           fi
-
-      - name: Verify Gumroad CLI
-        run: |
-          export PATH="$HOME/.local/bin:$HOME/go/bin:$PATH"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          gumroad --version || true
-          gumroad products --help || true
 
-      - name: Publish next book
+      - name: Run
         env:
           GUMROAD_ACCESS_TOKEN: ${{ secrets.GUMROAD_ACCESS_TOKEN }}
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
           GDRIVE_FOLDER_ID: ${{ vars.GDRIVE_FOLDER_ID }}
+          # Optional. Without it the listing copy is still written in full,
+          # just without the Claude polish pass.
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           ONLY_SLUG: ${{ inputs.slug }}
           DRY_RUN: ${{ inputs.dry_run }}
-        run: python scripts/publish.py
+          FORCE: ${{ inputs.force }}
+        run: python scripts/publish.py ${{ inputs.command || 'run' }}
 
-      - name: Commit updated state
-        if: ${{ inputs.dry_run != true }}
+      - name: Upload the dry-run previews
+        if: ${{ always() && inputs.dry_run == true }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: previews
+          path: out/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Commit what changed
+        # always(): a run that failed half way still has a draft worth
+        # recording, so the next run repairs it instead of duplicating it.
+        if: ${{ always() && inputs.dry_run != true }}
         run: |
           set -euo pipefail
-          if git diff --quiet -- state/published.json; then
-            echo "No state change to commit."
+          git config user.name "autopost"
+          git config user.email "actions@github.com"
+          git add -A state docs content 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "Nothing changed."
             exit 0
           fi
-          git config user.name "gumroad-autopost"
-          git config user.email "actions@github.com"
-          git add state/published.json
-          git commit -m "chore: record published book [skip ci]"
-          git push
+          git commit -m "chore: autopost run [skip ci]"
+          for attempt in 1 2 3 4; do
+            if git push; then exit 0; fi
+            echo "Push failed (attempt $attempt) — pulling and retrying"
+            git pull --rebase --autostash || true
+            sleep $((2 ** attempt))
+          done
+          echo "Could not push after 4 attempts" >&2
+          exit 1

@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en" data-theme="auto">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Autopost</title>
+<style>
+:root {
+  --bg: #f6f7f9;       --panel: #ffffff;     --panel-2: #fbfbfd;
+  --ink: #16181d;      --muted: #6b7280;     --line: #e4e6ec;
+  --accent: #4f46e5;   --accent-soft: #eef2ff;
+  --ok: #067647;       --ok-soft: #e7f6ee;
+  --warn: #92400e;     --warn-soft: #fef3c7;
+  --bad: #b42318;      --bad-soft: #fee4e2;
+  --radius: 14px;
+  --shadow: 0 1px 2px rgba(16,18,24,.05), 0 8px 24px -12px rgba(16,18,24,.12);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d0f14;     --panel: #14171f;     --panel-2: #191d27;
+    --ink: #e9eaf0;    --muted: #9aa1b1;     --line: #262b37;
+    --accent: #a5b4fc; --accent-soft: #1e2140;
+    --ok: #6ee7b7;     --ok-soft: #0d2b22;
+    --warn: #fcd34d;   --warn-soft: #2e2410;
+    --bad: #fca5a5;    --bad-soft: #341a1a;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 12px 32px -16px rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d0f14;       --panel: #14171f;     --panel-2: #191d27;
+  --ink: #e9eaf0;      --muted: #9aa1b1;     --line: #262b37;
+  --accent: #a5b4fc;   --accent-soft: #1e2140;
+  --ok: #6ee7b7;       --ok-soft: #0d2b22;
+  --warn: #fcd34d;     --warn-soft: #2e2410;
+  --bad: #fca5a5;      --bad-soft: #341a1a;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 12px 32px -16px rgba(0,0,0,.7);
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 15px/1.55 ui-sans-serif, -apple-system, "Segoe UI", Roboto, Inter, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 1100px; margin: 0 auto; padding: 32px 16px 72px; }
+
+header { display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 26px; }
+header .grow { flex: 1 1 260px; min-width: 0; }
+h1 { font-size: 26px; margin: 0 0 2px; letter-spacing: -.02em; }
+.sub { color: var(--muted); font-size: 14px; margin: 0; }
+button.theme {
+  background: var(--panel); color: var(--muted); border: 1px solid var(--line);
+  border-radius: 999px; padding: 7px 14px; font: inherit; font-size: 13px; cursor: pointer;
+}
+button.theme:hover { color: var(--ink); border-color: var(--muted); }
+
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 26px; }
+.kpi { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); }
+.kpi .n { font-size: 27px; font-weight: 640; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.kpi .l { color: var(--muted); font-size: 12.5px; text-transform: uppercase; letter-spacing: .06em; margin-top: 2px; }
+
+.next { display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
+  background: var(--accent-soft); border: 1px solid var(--line); border-left: 4px solid var(--accent);
+  border-radius: var(--radius); padding: 15px 18px; margin-bottom: 30px; }
+.next .when { font-weight: 640; }
+.next .why { color: var(--muted); font-size: 13.5px; }
+
+h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted);
+  margin: 0 0 12px; font-weight: 620; }
+section { margin-bottom: 34px; }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(232px, 1fr)); gap: 14px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  overflow: hidden; box-shadow: var(--shadow); display: flex; flex-direction: column; }
+.card .art { aspect-ratio: 1; background: var(--panel-2) center/cover no-repeat;
+  border-bottom: 1px solid var(--line); display: grid; place-items: center; color: var(--muted); font-size: 12px; }
+.card .body { padding: 13px 14px 14px; display: flex; flex-direction: column; gap: 7px; flex: 1; }
+.card .t { font-weight: 600; font-size: 14px; line-height: 1.35; }
+.card .t a { color: inherit; text-decoration: none; }
+.card .t a:hover { color: var(--accent); text-decoration: underline; }
+.card .meta { color: var(--muted); font-size: 12.5px; display: flex; gap: 8px; flex-wrap: wrap;
+  margin-top: auto; font-variant-numeric: tabular-nums; }
+
+.chips { display: flex; gap: 5px; flex-wrap: wrap; }
+.chip { font-size: 11px; padding: 2.5px 8px; border-radius: 999px; border: 1px solid var(--line);
+  color: var(--muted); background: var(--panel-2); white-space: nowrap; }
+.chip.ok   { color: var(--ok);   background: var(--ok-soft);   border-color: transparent; }
+.chip.warn { color: var(--warn); background: var(--warn-soft); border-color: transparent; }
+.chip.bad  { color: var(--bad);  background: var(--bad-soft);  border-color: transparent; }
+
+table { width: 100%; border-collapse: collapse; background: var(--panel);
+  border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
+th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--line); font-size: 14px; vertical-align: top; }
+th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 620; background: var(--panel-2); }
+tr:last-child td { border-bottom: 0; }
+td.slug { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+td.why { color: var(--muted); font-size: 13px; }
+
+.empty { background: var(--panel); border: 1px dashed var(--line); border-radius: var(--radius);
+  padding: 26px; text-align: center; color: var(--muted); font-size: 14px; }
+
+details.logs { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+details.logs summary { padding: 13px 16px; cursor: pointer; font-size: 13.5px; color: var(--muted); user-select: none; }
+details.logs summary:hover { color: var(--ink); }
+details.logs pre { margin: 0; padding: 0 16px 16px; font: 12.5px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace;
+  white-space: pre-wrap; word-break: break-word; border-top: 1px solid var(--line); padding-top: 14px; }
+.lvl-error { color: var(--bad); } .lvl-warn { color: var(--warn); } .lvl-ok { color: var(--ok); }
+
+footer { color: var(--muted); font-size: 12.5px; text-align: center; margin-top: 44px; }
+footer code { background: var(--panel); padding: 2px 6px; border-radius: 6px; border: 1px solid var(--line); }
+
+@media (max-width: 560px) {
+  .wrap { padding: 22px 14px 56px; }
+  h1 { font-size: 22px; }
+  .kpi .n { font-size: 23px; }
+  th, td { padding: 9px 11px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="grow">
+      <h1>Autopost</h1>
+      <p class="sub">Printable books — publishing pipeline</p>
+    </div>
+    <button class="theme" onclick="toggleTheme()">Theme</button>
+  </header>
+
+  <div class="kpis"><div class="kpi"><div class="n">1</div><div class="l">live</div></div><div class="kpi"><div class="n">0</div><div class="l">queued</div></div><div class="kpi"><div class="n">$4.99</div><div class="l">catalog value</div></div><div class="kpi"><div class="n">0</div><div class="l">pages published</div></div></div>
+
+  <div class="next">
+    <div>
+      <div class="when">Next window · Thu 01 Oct, 09:15 PST</div>
+      <div class="why">1 per run · mon, tue, wed, thu, fri, sat, sun at 09:15 Asia/Manila · platforms: gumroad</div>
+    </div>
+  </div>
+
+  <section>
+    <h2>Live</h2>
+    <div class="grid"><div class="card"><div class="art">no cover</div><div class="body"><div class="t">Mermaid Friends Coloring Book 3</div><div class="chips"><span class="chip ok">gumroad</span></div><div class="meta">$4.99 · 30 Sep 2026</div></div></div></div>
+  </section>
+
+  <section>
+    <h2>Queue</h2>
+    <div class="empty">The queue is empty — every PDF in the folder is already live.</div>
+  </section>
+
+  <section>
+    <h2>Needs attention</h2>
+    <div class="empty">Nothing needs attention.</div>
+  </section>
+
+  <section>
+    <h2>Last run</h2>
+    <details class="logs"><summary>0 log lines — 30 Sep 2026 14:52 UTC</summary><pre>(no log for this run)</pre></details>
+  </section>
+
+  <footer>
+    Rebuilt automatically after every run · edit <code>config.yml</code> to change the schedule, price or copy
+  </footer>
+</div>
+<script>
+function toggleTheme() {
+  const root = document.documentElement;
+  const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+  const now = root.dataset.theme === 'auto' ? (dark ? 'light' : 'dark')
+            : root.dataset.theme === 'dark' ? 'light' : 'dark';
+  root.dataset.theme = now;
+  try { localStorage.setItem('autopost-theme', now); } catch (e) {}
+}
+try {
+  const saved = localStorage.getItem('autopost-theme');
+  if (saved) document.documentElement.dataset.theme = saved;
+} catch (e) {}
+</script>
+</body>
+</html>

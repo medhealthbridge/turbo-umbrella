@@ -1,0 +1,24 @@
+{
+  "generated_at": "2026-09-30T14:52:40.613128+00:00",
+  "live": 1,
+  "queued": 0,
+  "catalog_value": 4.99,
+  "next_window": "2026-10-01T09:15:00+08:00",
+  "books": [
+    {
+      "slug": "mermaid-friends-coloring-3",
+      "name": "Mermaid Friends Coloring Book 3",
+      "price": "4.99",
+      "published_at": "2026-09-30T14:22:10Z",
+      "platforms": {
+        "gumroad": {
+          "status": "published",
+          "product_id": "PnA-E13w5Fxb3FpK-hhoOA==",
+          "url": null
+        }
+      },
+      "status": "published",
+      "updated_at": "2026-09-30T14:22:10Z"
+    }
+  ]
+}

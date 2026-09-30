@@ -1,0 +1,31 @@
+name: Check
+
+# Runs the end-to-end smoke test against a stand-in Gumroad CLI. No network,
+# no secrets, nothing published — so it is safe on every push and PR, and it
+# catches a broken publisher before the next morning's real run does.
+
+on:
+  push:
+    branches: [main]
+    paths: ["scripts/**", "config.yml", "tests/**", "requirements*.txt", ".github/workflows/check.yml"]
+  pull_request:
+    paths: ["scripts/**", "config.yml", "tests/**", "requirements*.txt"]
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install --quiet -r requirements.txt -r requirements-dev.txt
+      - name: Compile every module
+        run: python -m compileall -q scripts
+      - name: Validate config.yml
+        run: python scripts/publish.py plan
+      - name: Smoke test
+        run: python tests/smoke.py
