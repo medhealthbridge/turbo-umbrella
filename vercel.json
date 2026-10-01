@@ -1,0 +1,25 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+
+  "//": "This repo is a GitHub Actions automation, not a web app. The only thing worth serving is the dashboard in docs/, so there is nothing to build: framework null + an explicit outputDirectory stops Vercel auto-detecting the Python in scripts/ and looking for an entrypoint that does not exist.",
+
+  "framework": null,
+  "buildCommand": "echo 'Static dashboard - nothing to build.'",
+  "outputDirectory": "docs",
+  "cleanUrls": true,
+
+  "headers": [
+    {
+      "source": "/status.json",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/covers/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=86400" }
+      ]
+    }
+  ]
+}

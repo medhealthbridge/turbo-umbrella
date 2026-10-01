@@ -1,0 +1,15 @@
+# Vercel serves only the dashboard (docs/). Keeping everything else out of the
+# upload is what stops Vercel detecting this as a Python app and demanding an
+# entrypoint — there is no web server here, the publisher runs in GitHub Actions.
+scripts/
+tests/
+state/
+content/
+.github/
+out/
+requirements.txt
+requirements-dev.txt
+config.yml
+books.json
+README.md
+docs/PLATFORMS.md

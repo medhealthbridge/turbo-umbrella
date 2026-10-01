@@ -76,8 +76,24 @@ the generator is deterministic and needs no key.
 
 ### 4. Turn the dashboard on
 
-**Settings → Pages → Source: GitHub Actions**, then run the **Deploy
-dashboard** workflow once.
+Pick one host. Either serves the same `docs/` folder, and both refresh on
+their own: each run commits the rebuilt dashboard, and that push triggers a
+redeploy.
+
+**Vercel** — import the repo. `vercel.json` already tells it there is nothing
+to build and to serve `docs/`, and `.vercelignore` keeps the Python out of the
+upload so Vercel does not mistake this for a web app and ask for an entrypoint.
+Make sure Vercel's production branch is the branch that actually has `docs/`
+on it.
+
+**GitHub Pages** — **Settings → Pages → Source: GitHub Actions**, then run the
+**Deploy dashboard** workflow once.
+
+Both are public URLs. The dashboard shows titles, prices and product links —
+all of it already public on your storefront — but `status.json` also carries
+product ids and any error text. If you would rather it were not world-readable,
+Vercel's Deployment Protection (Project → Settings → Deployment Protection)
+puts it behind a login.
 
 ---
 
