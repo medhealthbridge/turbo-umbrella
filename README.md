@@ -86,6 +86,13 @@ upload so Vercel does not mistake this for a web app and ask for an entrypoint.
 Make sure Vercel's production branch is the branch that actually has `docs/`
 on it.
 
+If Vercel still tries to build this as a Python app, set **Project → Settings
+→ Build and Deployment → Root Directory** to `docs`. With the root set there,
+the only thing Vercel can see is a folder of static files — there is no
+`requirements.txt` in scope to detect, so the question cannot come up. In that
+mode the root `vercel.json` is not read, and `outputDirectory` no longer
+applies.
+
 **GitHub Pages** — **Settings → Pages → Source: GitHub Actions**, then run the
 **Deploy dashboard** workflow once.
 
