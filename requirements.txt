@@ -3,6 +3,9 @@ google-api-python-client==2.149.0
 google-auth==2.35.0
 gdown==5.2.0
 
+# Neon Postgres (only used when DATABASE_URL is set)
+psycopg[binary]==3.2.3
+
 # Configuration
 PyYAML==6.0.2
 tzdata==2024.2          # time zones on runners without a system tz database

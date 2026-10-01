@@ -1,29 +1,21 @@
 """Durable state — what we have seen, and what we have published.
 
-Two files, both committed back to the repo after every run:
+Held in memory for one run and persisted through `store` — Neon Postgres
+when DATABASE_URL is set, otherwise the JSON files under state/:
 
-  state/published.json   one record per book, per platform
-  state/seen.json        every Drive file we have ever noticed
+  published   one record per book, per platform
+  seen        every Drive file we have ever noticed
 
-`seen.json` is what makes "detect a new upload" work: a file is new the
-first time it shows up there, and its `first_seen` timestamp is what the
-settle delay is measured from.
+`seen` is what makes "detect a new upload" work: a file is new the first
+time it shows up there, and its `first_seen` timestamp is what the settle
+delay is measured from.
 
 The publish record is written *before* the risky work and updated after,
 so a run that dies half way leaves a `draft` behind rather than a hole —
 the next run repairs that draft instead of creating a duplicate.
 """
 
-import json
 from datetime import datetime, timezone
-from pathlib import Path
-
-from . import log
-from .config import ROOT
-
-STATE_DIR = ROOT / "state"
-PUBLISHED_FILE = STATE_DIR / "published.json"
-SEEN_FILE = STATE_DIR / "seen.json"
 
 
 def now():
@@ -37,20 +29,6 @@ def parse_time(value):
         return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
     except ValueError:
         return None
-
-
-def _read(path, default):
-    if not path.exists():
-        return default
-    try:
-        return json.loads(path.read_text(encoding="utf-8")) or default
-    except json.JSONDecodeError as exc:
-        log.fail(f"{path.relative_to(ROOT)} is corrupt: {exc}")
-
-
-def _write(path, data):
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
 def _migrate(entry):
@@ -69,9 +47,12 @@ def _migrate(entry):
 
 class State:
     def __init__(self):
-        published = _read(PUBLISHED_FILE, {"published": []})
-        self.entries = [_migrate(e) for e in published.get("published", [])]
-        self.seen = _read(SEEN_FILE, {"files": {}}).get("files", {})
+        from . import store
+
+        self.store = store.get()
+        entries, seen = self.store.load_state()
+        self.entries = [_migrate(e) for e in entries]
+        self.seen = seen
         self.dirty = False
 
     # ----------------------------------------------------------- published
@@ -153,6 +134,5 @@ class State:
         if not self.dirty:
             return False
         self.entries.sort(key=lambda e: (e.get("published_at") or e.get("updated_at") or "", e.get("slug", "")))
-        _write(PUBLISHED_FILE, {"published": self.entries})
-        _write(SEEN_FILE, {"files": self.seen})
+        self.store.save_state(self.entries, self.seen)
         return True

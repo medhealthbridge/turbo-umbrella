@@ -1,117 +1,172 @@
-# The control panel
+# Setting up the control panel and the scheduler
 
-A web page that runs your shop: change the schedule, edit a listing, upload a
-cover, publish on demand. You never open the code.
+You run the shop from one web page: the calendar, every listing, covers,
+the schedule, the copy. Everything you set is saved in your **Neon
+database**. The code never changes when you use the panel, and you never
+have to open it.
 
-It lives at your Vercel URL. Changes it makes are committed to this
-repository, and the next run picks them up.
+```
+   you ──► control panel (Vercel) ──► Neon Postgres ◄── publisher (GitHub Actions)
+                                          ▲                      ▲
+                                          │   every 5 minutes    │
+                                   scheduler (Neon Function) ────┘ "something is due"
+```
+
+- **The panel** writes your settings, listings, covers and calendar to Neon.
+- **The scheduler**, a Neon Function, wakes every five minutes. When a
+  calendar post is due, it starts a publish run.
+- **The publisher** reads everything from Neon: Drive, the PDF, the cover art,
+  Gumroad. It writes the results back to Neon, so the panel shows them.
+- **A backstop:** the publisher also runs on the hour. It publishes anything
+  due that the scheduler missed, and handles the automatic daily slot.
 
 ---
 
-## Turning it on (once, about five minutes)
+## One-time setup (about fifteen minutes)
 
-### 1. A GitHub token
+Do these once, in order.
 
-The panel edits your repository on your behalf, so it needs a token.
+### 1. Merge the pull request
 
-1. <https://github.com/settings/personal-access-tokens/new> — a **fine-grained**
-   token.
-2. **Repository access → Only select repositories →** this repository.
-3. **Permissions → Repository permissions**, set these three:
+Everything below runs from `main`.
 
-   | Permission | Access |
-   |---|---|
-   | Contents | Read and write |
-   | Actions | Read and write |
-   | Metadata | Read-only (added for you) |
+### 2. A GitHub token (for starting runs)
 
-4. Give it an expiry you are happy with, create it, and copy it. GitHub shows
-   it once.
+<https://github.com/settings/personal-access-tokens/new>, a **fine-grained**
+token:
 
-Nothing wider than that is needed. The token cannot touch your other
-repositories.
+- **Repository access:** only this repository
+- **Permissions → Actions:** Read and write
 
-### 2. Two environment variables in Vercel
+That's all it needs. The panel no longer writes to the repository, so it
+does not need Contents access. Copy the token; GitHub shows it only once.
 
-Vercel → your project → **Settings → Environment Variables**. Add both for
-**Production**:
+### 3. Secrets in GitHub
+
+Repo → **Settings → Secrets and variables → Actions → New repository secret**:
 
 | Name | Value |
 |---|---|
-| `PANEL_PASSWORD` | a password you choose — this is what signs you in |
-| `GITHUB_TOKEN` | the token from step 1 |
+| `DATABASE_URL` | your Neon connection string (`postgresql://…`) |
+| `GUMROAD_ACCESS_TOKEN` | you already have this |
+| `GOOGLE_SERVICE_ACCOUNT_JSON` | the service-account key, and **share the Drive folder with its `client_email`** |
+| `ANTHROPIC_API_KEY` | optional: Claude polishes the copy |
 
-Optional:
+### 4. Environment variables in Vercel
 
-| Name | Default | |
-|---|---|---|
-| `GITHUB_REPO` | `medhealthbridge/turbo-umbrella` | if you fork or rename |
-| `GITHUB_BRANCH` | `main` | the branch the panel reads and writes |
-| `PANEL_SECRET` | your password | rotating it signs every device out |
+Vercel → project → **Settings → Environment Variables**, for **Production**:
 
-### 3. Redeploy
+| Name | Value |
+|---|---|
+| `DATABASE_URL` | the same Neon connection string |
+| `PANEL_PASSWORD` | a password you choose; this is how you sign in |
+| `GITHUB_TOKEN` | the token from step 2 |
 
-Vercel → **Deployments → … → Redeploy**. Environment variables only reach the
-functions on a fresh deploy.
+Then **Deployments → … → Redeploy**. Variables only reach the functions on a
+fresh deploy.
 
-Open the URL, enter your password, and you are in. The session lasts two
-weeks per device.
+### 5. Deploy the scheduler to Neon
+
+From a terminal in this repository:
+
+```bash
+npm i -g neon@latest
+neon login
+neon link --project-id round-sea-27549086 --branch production -y
+GITHUB_TOKEN=github_pat_... neon deploy
+```
+
+`neon deploy` reads `neon.ts`, which declares the `scheduler` function and
+its five-minute trigger. The token is read from your shell at deploy time,
+so it never ends up in a file. Check it worked:
+
+```bash
+neon logs query --source function
+```
+
+The scheduler is optional. Without it, calendar posts still go out, but at
+the next hourly run rather than within five minutes.
+
+### 6. Rotate the database password
+
+Your connection string was pasted into a chat, so treat it as seen. In the
+Neon console, go to **Roles → neondb_owner → Reset password**, then put the
+new connection string into `DATABASE_URL` in GitHub (step 3) and Vercel
+(step 4), and redeploy Vercel. The scheduler picks up the new credentials on
+its own, because Neon injects them.
+
+---
+
+## The first time you open the panel
+
+There's nothing to set up inside it. On first use, the database creates its
+own tables and imports what's already in the repository: your 33 listings
+from `books.json` and the Mermaid book you've already published. That import
+happens once.
 
 ---
 
 ## What each tab does
 
-**Overview** — what is live, what is queued, what needs attention, and the
-last few runs. The *Run it now* box replaces going to the Actions tab:
+**Overview.** What's live, what has its PDF ready, what is still waiting for
+a PDF, and what's scheduled. It also shows anything that needs attention and
+the last few runs. *Run it now* starts a run by hand. Dry run is ticked by
+default, so untick it to publish for real.
 
-- *Publish the next book* — the normal cycle
-- *Look for new files only* — notices new PDFs, publishes nothing
-- *Show the plan* — prints the schedule and queue, changes nothing
-- *Rebuild the dashboard data* — refreshes `docs/status.json`
+**Calendar.** Pick a book, a date and a time, all in your shop's time zone.
+The book goes live within five minutes of that time. If its PDF isn't in
+Drive yet, it waits for it. After three tries it gives up and tells you why.
+Scheduling a book that's already on the calendar moves it rather than adding
+a second post.
 
-**Dry run is ticked by default.** Untick it to publish for real. *Force*
-ignores the posting window.
+**Books.** Every book in one list: live, ready, waiting for a PDF, or failed.
+Search and filter it. Pick one to:
+- edit its title, price, description or tags (clear a field to let the
+  generator write it)
+- upload your own cover, or remove it and go back to the one rendered from
+  page 1
+- see the images made for it and download them
+- copy its social posts, which already include the live link
+- schedule it
 
-**Schedule** — posting time in your own time zone, which days, how many per
-run, the minimum gap between publishes, how long a late run still counts, and
-how long a new file must settle before it is safe. Also the default price and
-the Drive folder.
+**Schedule.** Automatic publishing on or off. When it's on, new PDFs go out
+one slot at a time. When it's off, only what's on the calendar goes out. This
+tab also has the daily slot, days, books per slot, minimum gap, grace window,
+settle delay, default price and the Drive folder.
 
-**Marketing** — who you are writing for, your shop's promise, the reassurance
-points, the tags added to every book, the refund period and the receipt email.
-These shape every listing the generator writes.
-
-**Books** — pick any book, queued or live, and override its title, price,
-description or tags. Leave a field blank and the generator takes it back over.
-You can also upload a cover here, which replaces the one rendered from page 1.
-
----
-
-## Where your changes go
-
-| In the panel | Written to | Effect |
-|---|---|---|
-| Schedule, Marketing | `state/settings.json` | merged over `config.yml` |
-| A book's listing | `books.json` | per-book override |
-| A cover upload | `assets/artwork/<slug>-cover.jpg` | beats the rendered cover |
-| Run it now | a workflow run | immediate |
-
-`config.yml` is never machine-rewritten, so its comments survive and you can
-still edit it by hand. The panel's settings win where both set the same thing.
+**Marketing.** Who you're writing for, your shop's promise, reassurance
+points, the tags every book gets, the refund period and the receipt email.
 
 ---
 
-## Notes
+## Where things live
 
-**The URL is public; the panel is not.** Every endpoint except sign-in
-requires the session cookie, and the cookie is signed with your password. If
-you ever think the password leaked, change `PANEL_PASSWORD` in Vercel and
-redeploy — that invalidates every signed-in device.
+| What | Where |
+|---|---|
+| Your settings | `autopost_settings` in Neon, merged over `config.yml` |
+| Listings and publish results | `autopost_books` |
+| The calendar | `autopost_schedule` |
+| Covers you upload and images made for you | `autopost_artwork` |
+| Files seen in Drive | `autopost_seen` |
+| Every run's log | `autopost_runs` (the last 200) |
 
-**Settings apply on the next run**, not retroactively. A book already
-published is not rewritten by a marketing change; re-publish it from the
-Books tab if you want it updated.
+`config.yml` stays in the repository as the documented defaults. Anything you
+set in the panel overrides it. The schema is in `db/schema.sql`. The
+publisher and the panel both apply it on start-up, so a new or empty
+database just works.
 
-**`docs/status.json` is world-readable** at `your-url/status.json`. It carries
-titles, prices, product links and any error text. Nothing secret, but if you
-would rather it were private, turn on Vercel's Deployment Protection.
+---
+
+## Security, briefly
+
+- The panel URL is public, but the panel isn't. Every endpoint except sign-in
+  needs your session cookie, which is HttpOnly, Secure, SameSite=Strict and
+  signed with your password. To sign every device out, change
+  `PANEL_PASSWORD` and redeploy.
+- The settings endpoint only stores a fixed list of known settings, and
+  ignores anything else in a request.
+- Uploaded images are checked by their actual bytes, not by what the browser
+  says they are.
+- The scheduler's URL is public too, because Neon needs it to be. It only acts
+  when Neon's trigger header is present, and Neon strips that header from
+  anyone else's request.

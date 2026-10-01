@@ -61,10 +61,17 @@ def build(cfg, st, queue=None, output=None):
         "log": log.lines(),
     }
 
-    target.write_text(json.dumps(snapshot, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    try:
-        shown = target.relative_to(ROOT)
-    except ValueError:
-        shown = target
-    log.ok(f"status: {shown}", indent=1)
-    return target
+    from . import store
+
+    where = store.get()
+    if where.kind == "files":
+        target.write_text(json.dumps(snapshot, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        try:
+            shown = target.relative_to(ROOT)
+        except ValueError:
+            shown = target
+        log.ok(f"status: {shown}", indent=1)
+        return target
+    where.save_run(snapshot)
+    log.ok("run recorded in the database", indent=1)
+    return None

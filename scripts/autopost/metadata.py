@@ -8,15 +8,11 @@ books.json stays supported and always wins — put an entry there (matched by
 `slug`) to override any field for one specific book.
 """
 
-import json
 import re
 from dataclasses import dataclass, field
-from pathlib import Path
 
 from . import log
-from .config import ROOT
 
-BOOKS_FILE = ROOT / "books.json"
 
 # Words that should not be title-cased in a reconstructed title.
 SMALL_WORDS = {
@@ -178,18 +174,11 @@ def inspect_pdf(path):
 
 
 def load_overrides():
-    """books.json, keyed by slug. Missing or broken → no overrides."""
-    if not BOOKS_FILE.exists():
-        return {}
-    try:
-        data = json.loads(BOOKS_FILE.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
-        log.warn(f"books.json is not valid JSON ({exc}) — ignoring all overrides")
-        return {}
-    if not isinstance(data, list):
-        log.warn("books.json should be a list of books — ignoring it")
-        return {}
-    return {b["slug"]: b for b in data if isinstance(b, dict) and b.get("slug")}
+    """Per-book overrides, keyed by slug: the database's `override` column, or
+    books.json when there is no database."""
+    from . import store
+
+    return store.get().overrides()
 
 
 def build(source_file, cfg, overrides, pdf_path=None):

@@ -1,7 +1,8 @@
 name: Publish
 
-# Wakes up every hour and asks config.yml whether this is the moment.
-# You change the posting time in config.yml (in your own time zone) — not here.
+# Runs when the Neon scheduler starts it (calendar posts, within five minutes
+# of their time) and on the hour as a backstop and for the automatic daily
+# slot. You set every time in the control panel — not here.
 #
 # GitHub's scheduled runs are best-effort: they are routinely a few minutes
 # late and are occasionally skipped under load. Checking hourly against a
@@ -73,6 +74,9 @@ jobs:
           GUMROAD_ACCESS_TOKEN: ${{ secrets.GUMROAD_ACCESS_TOKEN }}
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
           GDRIVE_FOLDER_ID: ${{ vars.GDRIVE_FOLDER_ID }}
+          # Neon. With it, settings, listings, the calendar and every result
+          # live in the database and this run commits nothing to the repo.
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           # Optional. Without it the listing copy is still written in full,
           # just without the Claude polish pass.
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

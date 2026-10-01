@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Autopost Control</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%234f46e5'/%3E%3Cpath d='M9 22V10h7.5a4 4 0 0 1 0 8H13' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <style>
 :root {
   --bg:#f6f7f9; --panel:#fff; --panel-2:#fbfbfd; --ink:#16181d; --muted:#6b7280;
@@ -27,25 +28,26 @@
   --shadow:0 1px 2px rgba(0,0,0,.4), 0 12px 32px -16px rgba(0,0,0,.7);
 }
 *{box-sizing:border-box}
+/* `hidden` must win over any display rule, e.g. .gate's grid. */
+[hidden]{display:none !important}
 body{margin:0;background:var(--bg);color:var(--ink);
   font:15px/1.55 ui-sans-serif,-apple-system,"Segoe UI",Roboto,Inter,sans-serif;-webkit-font-smoothing:antialiased}
-.wrap{max-width:1040px;margin:0 auto;padding:28px 16px 80px}
+.wrap{max-width:1080px;margin:0 auto;padding:28px 16px 80px}
 h1{font-size:22px;margin:0;letter-spacing:-.02em}
 h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 12px;font-weight:620}
-h3{font-size:15px;margin:0 0 4px}
-p.sub{color:var(--muted);font-size:13.5px;margin:2px 0 0}
+h3{font-size:15px;margin:0 0 6px}
+p.sub,.sub{color:var(--muted);font-size:13.5px;margin:2px 0 0}
 a{color:var(--accent)}
+code{background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:1px 6px;font-size:12.5px}
 
-/* login */
 .gate{min-height:100vh;display:grid;place-items:center;padding:20px}
-.gate form{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
-  box-shadow:var(--shadow);padding:30px;width:100%;max-width:370px}
-.gate h1{margin-bottom:6px}
+.gate form,.gate .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  box-shadow:var(--shadow);padding:30px;width:100%;max-width:400px}
 
-header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:20px}
+header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:20px}
 header .grow{flex:1 1 220px;min-width:0}
 
-.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:24px;overflow-x:auto}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:24px;overflow-x:auto;scrollbar-width:none}
 .tabs button{background:none;border:0;border-bottom:2px solid transparent;color:var(--muted);
   font:inherit;font-size:14px;padding:9px 13px;cursor:pointer;white-space:nowrap}
 .tabs button:hover{color:var(--ink)}
@@ -60,26 +62,33 @@ header .grow{flex:1 1 220px;min-width:0}
 
 label{display:block;font-size:13px;font-weight:560;margin:0 0 5px}
 label .hint{display:block;font-weight:400;color:var(--muted);font-size:12.5px;margin-top:2px}
-input[type=text],input[type=password],input[type=number],select,textarea{
+input[type=text],input[type=password],input[type=number],input[type=date],input[type=time],input[type=search],select,textarea{
   width:100%;background:var(--panel-2);color:var(--ink);border:1px solid var(--line);
-  border-radius:9px;padding:9px 11px;font:inherit;font-size:14px}
+  border-radius:9px;padding:9px 11px;font:inherit;font-size:14px;color-scheme:light dark}
 input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:transparent}
 textarea{min-height:88px;resize:vertical;line-height:1.5}
-.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:16px}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:16px}
 .field{min-width:0}
 
-.days{display:flex;gap:6px;flex-wrap:wrap}
-.days label{display:flex;align-items:center;gap:6px;background:var(--panel-2);border:1px solid var(--line);
+.pills{display:flex;gap:6px;flex-wrap:wrap}
+.pills label{display:flex;align-items:center;gap:6px;background:var(--panel-2);border:1px solid var(--line);
   border-radius:999px;padding:6px 12px;font-size:13px;font-weight:500;cursor:pointer;margin:0}
-.days input{margin:0}
-.days label:has(input:checked){background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.pills input{margin:0}
+.pills label:has(input:checked){background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+
+.switch{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--panel-2);
+  border:1px solid var(--line);border-radius:11px;margin-bottom:16px;cursor:pointer}
+.switch input{width:18px;height:18px;margin:0;accent-color:var(--accent)}
+.switch b{display:block;font-size:14px}
 
 button.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:9px;
-  padding:10px 16px;font:inherit;font-size:14px;font-weight:560;cursor:pointer}
+  padding:9px 15px;font:inherit;font-size:14px;font-weight:560;cursor:pointer;white-space:nowrap}
 button.btn:hover{filter:brightness(1.08)}
 button.btn:disabled{opacity:.5;cursor:default}
 button.ghost{background:var(--panel);color:var(--ink);border:1px solid var(--line)}
 button.ghost:hover{border-color:var(--muted);filter:none}
+button.small{padding:5px 10px;font-size:12.5px;border-radius:8px}
+button.danger{color:var(--bad)}
 .actions{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
 
 .chip{font-size:11.5px;padding:3px 9px;border-radius:999px;border:1px solid var(--line);
@@ -87,17 +96,30 @@ button.ghost:hover{border-color:var(--muted);filter:none}
 .chip.ok{color:var(--ok);background:var(--ok-soft);border-color:transparent}
 .chip.warn{color:var(--warn);background:var(--warn-soft);border-color:transparent}
 .chip.bad{color:var(--bad);background:var(--bad-soft);border-color:transparent}
-.chips{display:flex;gap:5px;flex-wrap:wrap}
+.chip.info{color:var(--accent);background:var(--accent-soft);border-color:transparent}
 
-.list{display:flex;flex-direction:column;gap:2px}
+.list{display:flex;flex-direction:column;gap:3px}
 .item{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:10px;
-  background:var(--panel-2);border:1px solid transparent;cursor:pointer;text-align:left;width:100%;
-  font:inherit;color:inherit}
-.item:hover{border-color:var(--line)}
+  background:var(--panel-2);border:1px solid transparent;text-align:left;width:100%;font:inherit;color:inherit}
+button.item{cursor:pointer}
+button.item:hover{border-color:var(--line)}
 .item[aria-current="true"]{border-color:var(--accent);background:var(--accent-soft)}
 .item .meta{color:var(--muted);font-size:12.5px}
 .item .grow{flex:1;min-width:0}
 .item .t{font-weight:560;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.day{font-size:12px;font-weight:620;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:14px 2px 6px}
+.day:first-child{margin-top:0}
+.when{font-variant-numeric:tabular-nums;font-weight:600;min-width:58px}
+
+.split{display:grid;grid-template-columns:minmax(260px,340px) 1fr;gap:18px;align-items:start}
+@media(max-width:800px){.split{grid-template-columns:1fr}}
+
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
+.shot{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--panel-2)}
+.shot img{display:block;width:100%;aspect-ratio:1;object-fit:cover;background:var(--panel-2)}
+.shot div{display:flex;justify-content:space-between;align-items:center;padding:6px 8px;font-size:12px;color:var(--muted)}
+.caption{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px}
+.caption pre{white-space:pre-wrap;word-break:break-word;margin:6px 0 0;font:13px/1.5 inherit}
 
 .msg{border-radius:10px;padding:11px 14px;font-size:14px;margin-bottom:14px;display:none}
 .msg.show{display:block}
@@ -105,14 +127,12 @@ button.ghost:hover{border-color:var(--muted);filter:none}
 .msg.bad{background:var(--bad-soft);color:var(--bad)}
 .msg.info{background:var(--accent-soft);color:var(--accent)}
 
-.empty{color:var(--muted);font-size:14px;padding:18px;text-align:center;
-  border:1px dashed var(--line);border-radius:10px}
-.cover{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:10px;border:1px solid var(--line);background:var(--panel-2)}
+.empty{color:var(--muted);font-size:14px;padding:18px;text-align:center;border:1px dashed var(--line);border-radius:10px}
 .spin{display:inline-block;width:13px;height:13px;border:2px solid currentColor;border-right-color:transparent;
   border-radius:50%;animation:s .7s linear infinite;vertical-align:-2px;margin-right:6px}
 @keyframes s{to{transform:rotate(360deg)}}
 footer{color:var(--muted);font-size:12.5px;text-align:center;margin-top:34px}
-@media(max-width:560px){.wrap{padding:20px 13px 60px}h1{font-size:19px}}
+@media(max-width:560px){.wrap{padding:20px 13px 60px}h1{font-size:19px}.card{padding:16px}}
 </style>
 </head>
 <body>
@@ -120,7 +140,7 @@ footer{color:var(--muted);font-size:12.5px;text-align:center;margin-top:34px}
 <div id="gate" class="gate" hidden>
   <form onsubmit="signIn(event)">
     <h1>Autopost</h1>
-    <p class="sub" style="margin-bottom:18px">Sign in to manage your shop.</p>
+    <p class="sub" style="margin-bottom:18px">Sign in to run your shop.</p>
     <div id="gate-msg" class="msg bad"></div>
     <label for="pw">Password</label>
     <input id="pw" type="password" autocomplete="current-password" required autofocus>
@@ -134,31 +154,30 @@ footer{color:var(--muted);font-size:12.5px;text-align:center;margin-top:34px}
       <h1>Autopost</h1>
       <p class="sub" id="repo-line"></p>
     </div>
-    <button class="btn ghost" onclick="toggleTheme()">Theme</button>
-    <button class="btn ghost" onclick="signOut()">Sign out</button>
+    <button class="btn ghost small" onclick="refresh()">Refresh</button>
+    <button class="btn ghost small" onclick="toggleTheme()">Theme</button>
+    <button class="btn ghost small" onclick="signOut()">Sign out</button>
   </header>
 
   <div class="tabs" role="tablist">
-    <button role="tab" data-tab="overview" aria-selected="true" onclick="showTab('overview')">Overview</button>
-    <button role="tab" data-tab="schedule" aria-selected="false" onclick="showTab('schedule')">Schedule</button>
-    <button role="tab" data-tab="marketing" aria-selected="false" onclick="showTab('marketing')">Marketing</button>
-    <button role="tab" data-tab="books" aria-selected="false" onclick="showTab('books')">Books</button>
+    <button role="tab" data-tab="overview" onclick="showTab('overview')">Overview</button>
+    <button role="tab" data-tab="calendar" onclick="showTab('calendar')">Calendar</button>
+    <button role="tab" data-tab="books" onclick="showTab('books')">Books</button>
+    <button role="tab" data-tab="schedule" onclick="showTab('schedule')">Schedule</button>
+    <button role="tab" data-tab="marketing" onclick="showTab('marketing')">Marketing</button>
   </div>
 
   <div id="msg" class="msg"></div>
+  <section id="view"></section>
 
-  <section id="tab-overview"></section>
-  <section id="tab-schedule" hidden></section>
-  <section id="tab-marketing" hidden></section>
-  <section id="tab-books" hidden></section>
-
-  <footer>Changes are committed to your repository and take effect on the next run.</footer>
+  <footer>Everything here is saved to your database and takes effect on the next run.</footer>
 </div>
 
 <script>
-let STATE = null, TAB = "overview", BOOK = null;
+const TABS = ["overview", "calendar", "books", "schedule", "marketing"];
+let STATE = null, TAB = "overview", BOOK = null, FILTER = "all", QUERY = "";
 
-/* ----------------------------------------------------------------- helpers */
+/* ================================================================ helpers */
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -171,10 +190,7 @@ function say(text, kind = "ok", target = "msg") {
 }
 
 async function api(path, options) {
-  const resp = await fetch("/api/" + path, {
-    headers: { "content-type": "application/json" },
-    ...options,
-  });
+  const resp = await fetch("/api/" + path, { headers: { "content-type": "application/json" }, ...options });
   let data = {};
   try { data = await resp.json(); } catch {}
   if (resp.status === 401 && path !== "session") { showGate(); throw new Error("Signed out."); }
@@ -191,7 +207,53 @@ function toggleTheme() {
 }
 try { const t = localStorage.getItem("autopost-theme"); if (t) document.documentElement.dataset.theme = t; } catch {}
 
-/* -------------------------------------------------------------------- auth */
+function setting(path, fallback) {
+  let node = STATE && STATE.settings;
+  for (const part of path.split(".")) {
+    if (!node || typeof node !== "object" || !(part in node)) return fallback;
+    node = node[part];
+  }
+  return node ?? fallback;
+}
+
+/* ============================================================ time zones
+   Everything you type and read here is in the shop's time zone (Schedule →
+   Time zone), whatever zone your phone or laptop happens to be in. */
+const tz = () => setting("schedule.timezone", "Asia/Manila");
+
+function partsIn(date, zone) {
+  const f = new Intl.DateTimeFormat("en-US", { timeZone: zone, hourCycle: "h23",
+    year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  const p = Object.fromEntries(f.formatToParts(date).map((x) => [x.type, x.value]));
+  return { y: +p.year, m: +p.month, d: +p.day, h: +p.hour, mi: +p.minute, s: +p.second };
+}
+
+/** "2026-10-03" + "09:15" in `zone` → a real instant. Handles DST. */
+function zonedToDate(dateStr, timeStr, zone) {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const [h, mi] = timeStr.split(":").map(Number);
+  const wanted = Date.UTC(y, m - 1, d, h, mi);
+  let guess = wanted;
+  for (let i = 0; i < 3; i++) {
+    const p = partsIn(new Date(guess), zone);
+    const shown = Date.UTC(p.y, p.m - 1, p.d, p.h, p.mi);
+    guess += wanted - shown;
+  }
+  return new Date(guess);
+}
+
+const fmtTime = (iso) => new Intl.DateTimeFormat("en", { timeZone: tz(), hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(iso));
+const fmtDay = (iso) => new Intl.DateTimeFormat("en", { timeZone: tz(), weekday: "long", day: "numeric", month: "short" }).format(new Date(iso));
+const fmtFull = (iso) => iso ? new Intl.DateTimeFormat("en", { timeZone: tz(), dateStyle: "medium", timeStyle: "short" }).format(new Date(iso)) : "—";
+function dayKey(iso) { const p = partsIn(new Date(iso), tz()); return `${p.y}-${String(p.m).padStart(2,"0")}-${String(p.d).padStart(2,"0")}`; }
+function relative(iso) {
+  const mins = Math.round((new Date(iso) - Date.now()) / 60000);
+  const abs = Math.abs(mins);
+  const s = abs < 60 ? `${abs} min` : abs < 1440 ? `${Math.round(abs / 60)} h` : `${Math.round(abs / 1440)} d`;
+  return mins >= 0 ? `in ${s}` : `${s} ago`;
+}
+
+/* ================================================================== auth */
 function showGate() { $("gate").hidden = false; $("app").hidden = true; }
 
 async function signIn(event) {
@@ -216,154 +278,363 @@ async function signOut() {
   location.reload();
 }
 
-/* -------------------------------------------------------------------- data */
+/* ================================================================== data */
 async function load() {
   $("app").hidden = false;
   STATE = await api("state");
-  $("repo-line").textContent = `${STATE.repo} · ${STATE.branch}`;
-  render();
+  $("repo-line").textContent = `${STATE.repo} · times in ${tz()}`;
+  showTab(location.hash.slice(1) || TAB);
 }
 
-function setting(path, fallback) {
-  const parts = path.split(".");
-  let node = STATE.settings;
-  for (const part of parts) {
-    if (!node || typeof node !== "object" || !(part in node)) return fallback;
-    node = node[part];
-  }
-  return node ?? fallback;
+async function refresh() {
+  try { STATE = await api("state"); render(); } catch (err) { say(err.message, "bad"); }
 }
 
-/* ------------------------------------------------------------------ render */
+const bookBy = (slug) => STATE.books.find((b) => b.slug === slug);
+// A book with no listing yet is named after its file, the way the publisher
+// will name it: "sea-turtle-story.pdf" → "Sea Turtle Story".
+const SMALL = new Set(["a", "an", "and", "as", "at", "but", "by", "for", "from", "in", "of", "on", "or", "the", "to", "with", "yet"]);
+function prettify(name) {
+  const words = String(name || "").replace(/\.pdf$/i, "").replace(/[_-]+/g, " ").trim().split(/\s+/);
+  return words.map((w, i) => (i && SMALL.has(w.toLowerCase()) ? w.toLowerCase() : w.charAt(0).toUpperCase() + w.slice(1))).join(" ");
+}
+const titleOf = (b) => (b && (b.record.title || b.override.name || b.record.name || prettify((b.file && b.file.name) || b.slug))) || "";
+const pending = () => STATE.schedule.filter((p) => p.status === "scheduled" || p.status === "dispatched");
+const postFor = (slug) => pending().find((p) => p.slug === slug);
+
+const STATE_CHIP = {
+  live: ["ok", "live"], queued: ["warn", "queued"], prepared: ["", "prepared"],
+  failed: ["bad", "failed"], partial: ["bad", "partial"], pending: ["warn", "in progress"], draft: ["warn", "draft"],
+};
+function stateChip(state) {
+  const [kind, label] = STATE_CHIP[state] || ["", state || "?"];
+  return `<span class="chip ${kind}">${esc(label)}</span>`;
+}
+
+/* ================================================================ render */
 function showTab(tab) {
+  if (!TABS.includes(tab)) tab = "overview";
   TAB = tab;
-  for (const button of document.querySelectorAll('[role="tab"]'))
-    button.setAttribute("aria-selected", String(button.dataset.tab === tab));
-  for (const name of ["overview", "schedule", "marketing", "books"])
-    $("tab-" + name).hidden = name !== tab;
+  history.replaceState(null, "", "#" + tab);
+  for (const b of document.querySelectorAll('[role="tab"]')) b.setAttribute("aria-selected", String(b.dataset.tab === tab));
   render();
 }
 
 function render() {
   if (!STATE) return;
-  ({ overview: renderOverview, schedule: renderSchedule,
-     marketing: renderMarketing, books: renderBooks }[TAB])();
+  $("view").innerHTML = ({ overview, calendar, books, schedule, marketing })[TAB]();
+  if (TAB === "calendar") setDefaultTime();
 }
 
-function renderOverview() {
-  const live = STATE.published.filter((b) => b.status === "published");
-  const problems = STATE.published.filter((b) => b.status && b.status !== "published");
-  const value = live.reduce((sum, b) => sum + (parseFloat(b.price) || 0), 0);
-  const currency = setting("dashboard.currency", "$");
+/* ------------------------------------------------------------- overview */
+function overview() {
+  const by = (s) => STATE.books.filter((b) => b.state === s).length;
+  const problems = STATE.books.filter((b) => ["failed", "partial", "pending", "draft"].includes(b.state));
+  const failedPosts = STATE.schedule.filter((p) => p.status === "failed");
+  const next = pending().slice(0, 5);
 
-  const runs = STATE.runs.map((run) => {
-    const kind = run.conclusion === "success" ? "ok"
-               : run.status !== "completed" ? "warn"
-               : run.conclusion ? "bad" : "";
-    const label = run.status === "completed" ? run.conclusion : run.status;
-    return `<div class="item" style="cursor:default">
-      <span class="chip ${kind}">${esc(label || "?")}</span>
-      <div class="grow"><div class="t">${esc(run.name)}</div>
-      <div class="meta">${new Date(run.created_at).toLocaleString()} · ${esc(run.event)}</div></div>
+  const nextHtml = next.map((p) => `
+    <div class="item"><div class="when">${esc(fmtTime(p.publish_at))}</div>
+      <div class="grow"><div class="t">${esc(titleOf(bookBy(p.slug)) || p.slug)}</div>
+      <div class="meta">${esc(fmtDay(p.publish_at))} · ${esc(relative(p.publish_at))}${p.last_error ? " · ⚠ " + esc(p.last_error) : ""}</div></div>
+      ${p.status === "dispatched" ? '<span class="chip info">publishing</span>' : ""}</div>`).join("")
+    || `<div class="empty">Nothing on the calendar. ${setting("schedule.auto", true)
+          ? `New books go out automatically at ${esc(setting("schedule.publish_at", "09:15"))}.`
+          : "Automatic publishing is off, so only calendar posts go out."}
+        <div style="margin-top:10px"><button class="btn small" onclick="showTab('calendar')">Schedule a post</button></div></div>`;
+
+  const runs = (STATE.runs || []).map((run) => {
+    const kind = run.conclusion === "success" ? "ok" : run.status !== "completed" ? "warn" : run.conclusion ? "bad" : "";
+    return `<div class="item"><span class="chip ${kind}">${esc(run.status === "completed" ? run.conclusion : run.status)}</span>
+      <div class="grow"><div class="t">${esc(run.name)}</div><div class="meta">${esc(fmtFull(run.created_at))} · ${esc(run.event)}</div></div>
       <a class="meta" href="${esc(run.url)}" target="_blank" rel="noopener">open</a></div>`;
-  }).join("") || '<div class="empty">No runs yet.</div>';
+  }).join("") || '<div class="empty">No runs to show yet.</div>';
 
-  const cards = live.slice().reverse().map((b) => {
-    const url = Object.values(b.platforms || {}).map((p) => p && p.url).find(Boolean);
-    const title = b.title || b.name || b.slug;
-    return `<div class="item" style="cursor:default"><div class="grow">
-      <div class="t">${url ? `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(title)}</a>` : esc(title)}</div>
-      <div class="meta">${currency}${esc(b.price || "—")}${b.pages ? " · " + esc(b.pages) + " pages" : ""}</div>
-      </div><span class="chip ok">live</span></div>`;
-  }).join("") || '<div class="empty">Nothing published yet.</div>';
+  const attention = [
+    ...problems.map((b) => `<button class="item" onclick="openBook('${esc(b.slug)}')">${stateChip(b.state)}
+      <div class="grow"><div class="t">${esc(titleOf(b))}</div><div class="meta">${esc(b.record.error || "needs another run")}</div></div></button>`),
+    ...failedPosts.map((p) => `<button class="item" onclick="showTab('calendar')"><span class="chip bad">post failed</span>
+      <div class="grow"><div class="t">${esc(titleOf(bookBy(p.slug)) || p.slug)}</div><div class="meta">${esc(p.last_error || "")}</div></div></button>`),
+  ].join("");
 
-  $("tab-overview").innerHTML = `
+  return `
     <div class="kpis">
-      <div class="kpi"><div class="n">${live.length}</div><div class="l">live</div></div>
-      <div class="kpi"><div class="n">${STATE.queue.length}</div><div class="l">queued</div></div>
-      <div class="kpi"><div class="n">${currency}${value.toFixed(2)}</div><div class="l">catalog value</div></div>
-      <div class="kpi"><div class="n">${problems.length}</div><div class="l">need attention</div></div>
+      <div class="kpi"><div class="n">${by("live")}</div><div class="l">live</div></div>
+      <div class="kpi"><div class="n">${by("queued")}</div><div class="l">PDF ready</div></div>
+      <div class="kpi"><div class="n">${by("prepared")}</div><div class="l">waiting for PDF</div></div>
+      <div class="kpi"><div class="n">${pending().length}</div><div class="l">scheduled</div></div>
     </div>
-
+    <div class="card"><h2>Next up</h2><div class="list">${nextHtml}</div></div>
+    ${attention ? `<div class="card"><h2>Needs attention</h2><div class="list">${attention}</div></div>` : ""}
     <div class="card">
       <h2>Run it now</h2>
-      <p class="sub" style="margin-bottom:14px">Publishing respects your schedule unless you tick Force.</p>
+      <p class="sub" style="margin-bottom:14px">${STATE.github ? "Starts a publish run on GitHub. Dry run is on by default."
+        : "Needs <code>GITHUB_TOKEN</code> in Vercel. Scheduled posts don't need this — they run on their own."}</p>
       <div class="row" style="margin-bottom:12px">
         <div class="field"><label for="run-cmd">What to do</label>
           <select id="run-cmd">
-            <option value="run">Publish the next book</option>
+            <option value="run">Publish what's due</option>
             <option value="scan">Look for new files only</option>
             <option value="plan">Show the plan (changes nothing)</option>
-            <option value="dashboard">Rebuild the dashboard data</option>
           </select></div>
-        <div class="field"><label for="run-slug">One specific book <span class="hint">Optional slug</span></label>
-          <input id="run-slug" type="text" placeholder="leave blank for the next in queue"></div>
+        <div class="field"><label for="run-slug">One specific book <span class="hint">Optional — publishes it now</span></label>
+          <select id="run-slug"><option value="">— the normal queue —</option>
+            ${STATE.books.filter((b) => b.state === "queued").map((b) => `<option value="${esc(b.slug)}">${esc(titleOf(b))}</option>`).join("")}
+          </select></div>
       </div>
-      <div class="days" style="margin-bottom:14px">
-        <label><input type="checkbox" id="run-force"> Force (ignore the schedule)</label>
+      <div class="pills" style="margin-bottom:14px">
+        <label><input type="checkbox" id="run-force"> Ignore the schedule</label>
         <label><input type="checkbox" id="run-dry" checked> Dry run (send nothing)</label>
       </div>
-      <div class="actions">
-        <button class="btn" id="run-go" onclick="triggerRun()">Start</button>
-        <button class="btn ghost" onclick="refresh()">Refresh</button>
-      </div>
+      <div class="actions"><button class="btn" id="run-go" onclick="triggerRun()" ${STATE.github ? "" : "disabled"}>Start</button></div>
     </div>
-
-    <div class="card"><h2>Recent runs</h2><div class="list">${runs}</div></div>
-    ${problems.length ? `<div class="card"><h2>Needs attention</h2><div class="list">${problems.map((b) =>
-      `<div class="item" style="cursor:default"><span class="chip bad">${esc(b.status)}</span>
-       <div class="grow"><div class="t">${esc(b.slug)}</div>
-       <div class="meta">${esc(b.error || "needs another run")}</div></div></div>`).join("")}</div></div>` : ""}
-    <div class="card"><h2>Live</h2><div class="list">${cards}</div></div>`;
+    <div class="card"><h2>Recent runs</h2><div class="list">${runs}</div></div>`;
 }
 
-function renderSchedule() {
-  const days = setting("schedule.days", ["mon","tue","wed","thu","fri","sat","sun"]);
-  const dayBoxes = ["mon","tue","wed","thu","fri","sat","sun"].map((d) =>
-    `<label><input type="checkbox" value="${d}" ${days.includes(d) ? "checked" : ""}> ${d}</label>`).join("");
+/* ------------------------------------------------------------- calendar */
+function calendar() {
+  const choices = STATE.books.filter((b) => b.state !== "live")
+    .sort((a, b) => (a.state === "queued" ? 0 : 1) - (b.state === "queued" ? 0 : 1) || titleOf(a).localeCompare(titleOf(b)));
 
-  $("tab-schedule").innerHTML = `
+  const groups = new Map();
+  for (const p of pending()) {
+    const k = dayKey(p.publish_at);
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(p);
+  }
+  const upcoming = [...groups.values()].map((posts) => `
+    <div class="day">${esc(fmtDay(posts[0].publish_at))}</div>
+    ${posts.map((p) => {
+      const b = bookBy(p.slug);
+      const noPdf = b && b.state === "prepared";
+      return `<div class="item"><div class="when">${esc(fmtTime(p.publish_at))}</div>
+        <div class="grow"><div class="t">${esc(titleOf(b) || p.slug)}</div>
+        <div class="meta">${esc(relative(p.publish_at))}${noPdf ? " · ⚠ the PDF isn't in Drive yet" : ""}${p.last_error ? " · " + esc(p.last_error) : ""}</div></div>
+        ${p.status === "dispatched" ? '<span class="chip info">publishing</span>' : ""}
+        <button class="btn ghost small" onclick="editPost('${esc(p.slug)}','${esc(p.publish_at)}')">Move</button>
+        <button class="btn ghost small danger" onclick="cancelPost(${Number(p.id)})">Cancel</button></div>`;
+    }).join("")}`).join("") || '<div class="empty">Nothing scheduled yet.</div>';
+
+  const done = STATE.schedule.filter((p) => ["published", "failed", "cancelled"].includes(p.status))
+    .sort((a, b) => new Date(b.finished_at || b.publish_at) - new Date(a.finished_at || a.publish_at)).slice(0, 12);
+  const doneHtml = done.map((p) => {
+    const kind = { published: "ok", failed: "bad", cancelled: "" }[p.status];
+    return `<div class="item"><span class="chip ${kind}">${esc(p.status)}</span>
+      <div class="grow"><div class="t">${esc(titleOf(bookBy(p.slug)) || p.slug)}</div>
+      <div class="meta">for ${esc(fmtFull(p.publish_at))}${p.last_error ? " · " + esc(p.last_error) : ""}</div></div></div>`;
+  }).join("");
+
+  return `
     <div class="card">
-      <h2>When to publish</h2>
+      <h2>Schedule a post</h2>
+      <p class="sub" style="margin-bottom:14px">Pick a book and a time in ${esc(tz())}. It goes live within five minutes of that time —
+        even if its PDF is still on its way, it waits for it.</p>
       <div class="row">
-        <div class="field"><label for="s-time">Posting time <span class="hint">Your local time, 24-hour</span></label>
-          <input id="s-time" type="text" value="${esc(setting("schedule.publish_at", "09:15"))}" placeholder="09:15"></div>
-        <div class="field"><label for="s-tz">Time zone</label>
-          <input id="s-tz" type="text" value="${esc(setting("schedule.timezone", "Asia/Manila"))}" placeholder="Asia/Manila"></div>
+        <div class="field" style="grid-column:span 2;min-width:0"><label for="c-book">Book</label>
+          <select id="c-book">${choices.map((b) => `<option value="${esc(b.slug)}" ${b.slug === BOOK ? "selected" : ""}>
+            ${esc(titleOf(b))}${b.state === "prepared" ? " — PDF not in Drive yet" : ""}${postFor(b.slug) ? " — already scheduled" : ""}</option>`).join("")}</select></div>
+        <div class="field"><label for="c-date">Date</label><input id="c-date" type="date"></div>
+        <div class="field"><label for="c-time">Time</label><input id="c-time" type="time" step="300"></div>
+      </div>
+      <div class="actions"><button class="btn" id="c-save" onclick="savePost()" ${choices.length ? "" : "disabled"}>Schedule</button>
+        <span class="sub">Scheduling a book that's already on the calendar moves it.</span></div>
+    </div>
+    <div class="card"><h2>Coming up</h2><div class="list">${upcoming}</div></div>
+    ${doneHtml ? `<div class="card"><h2>Last 14 days</h2><div class="list">${doneHtml}</div></div>` : ""}`;
+}
+
+function setDefaultTime() {
+  if (!$("c-date") || $("c-date").value) return;
+  const p = partsIn(new Date(Date.now() + 24 * 3600e3), tz());
+  $("c-date").value = `${p.y}-${String(p.m).padStart(2, "0")}-${String(p.d).padStart(2, "0")}`;
+  $("c-time").value = setting("schedule.publish_at", "09:15").padStart(5, "0");
+  $("c-date").min = dayKey(new Date().toISOString());
+}
+
+function editPost(slug, iso) {
+  BOOK = slug;
+  showTab("calendar");
+  $("c-book").value = slug;
+  const p = partsIn(new Date(iso), tz());
+  $("c-date").value = `${p.y}-${String(p.m).padStart(2, "0")}-${String(p.d).padStart(2, "0")}`;
+  $("c-time").value = `${String(p.h).padStart(2, "0")}:${String(p.mi).padStart(2, "0")}`;
+  $("c-date").scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+async function savePost() {
+  const slug = $("c-book").value, date = $("c-date").value, time = $("c-time").value;
+  if (!slug || !date || !time) return say("Pick a book, a date and a time.", "bad");
+  const when = zonedToDate(date, time, tz());
+  await withButton("c-save", "Scheduling…", async () => {
+    const out = await api("schedule", { method: "POST", body: JSON.stringify({ slug, publish_at: when.toISOString() }) });
+    STATE = await api("state");
+    say(`${out.rescheduled ? "Moved" : "Scheduled"}: ${titleOf(bookBy(slug))} — ${fmtFull(when.toISOString())}.`);
+    render();
+  });
+}
+
+async function cancelPost(id) {
+  if (!confirm("Take this post off the calendar?")) return;
+  try {
+    await api("schedule", { method: "DELETE", body: JSON.stringify({ id }) });
+    STATE = await api("state");
+    say("Cancelled.");
+    render();
+  } catch (err) { say(err.message, "bad"); }
+}
+
+/* ---------------------------------------------------------------- books */
+function books() {
+  const counts = { all: STATE.books.length };
+  for (const b of STATE.books) counts[b.state] = (counts[b.state] || 0) + 1;
+  const shown = STATE.books
+    .filter((b) => FILTER === "all" || b.state === FILTER)
+    .filter((b) => !QUERY || (titleOf(b) + " " + b.slug).toLowerCase().includes(QUERY.toLowerCase()))
+    .sort((a, b) => titleOf(a).localeCompare(titleOf(b)));
+
+  const filters = ["all", "live", "queued", "prepared", "failed"].filter((f) => f === "all" || counts[f])
+    .map((f) => `<label><input type="radio" name="flt" ${FILTER === f ? "checked" : ""} onchange="FILTER='${f}';render()"> ${f} ${counts[f] || 0}</label>`).join("");
+
+  const list = shown.map((b) => {
+    const post = postFor(b.slug);
+    return `<button class="item" aria-current="${b.slug === BOOK}" onclick="openBook('${esc(b.slug)}')">
+      ${stateChip(b.state)}<div class="grow"><div class="t">${esc(titleOf(b))}</div>
+      <div class="meta">${post ? "🗓 " + esc(fmtFull(post.publish_at)) : esc(b.slug)}</div></div></button>`;
+  }).join("") || '<div class="empty">No books match.</div>';
+
+  return `<div class="split">
+    <div class="card" style="margin:0">
+      <input type="search" placeholder="Search books" value="${esc(QUERY)}" oninput="QUERY=this.value;render();this.focus();this.setSelectionRange(this.value.length,this.value.length)" style="margin-bottom:10px">
+      <div class="pills" style="margin-bottom:12px">${filters}</div>
+      <div class="list">${list}</div>
+    </div>
+    <div>${BOOK && bookBy(BOOK) ? editor(bookBy(BOOK)) : '<div class="card"><div class="empty">Pick a book to edit its listing, upload a cover, schedule it, or grab its social posts.</div></div>'}</div>
+  </div>`;
+}
+
+function openBook(slug) { BOOK = slug; if (TAB !== "books") showTab("books"); else render(); }
+
+function img(slug, kind, source, version) {
+  return `/api/media?slug=${encodeURIComponent(slug)}&kind=${kind}${source ? "&source=" + source : ""}&v=${encodeURIComponent(version || "")}`;
+}
+
+function editor(b) {
+  const o = b.override, r = b.record;
+  const post = postFor(b.slug);
+  const url = r.url || Object.values(r.platforms || {}).map((p) => p && p.url).find(Boolean);
+  const upload = b.artwork["cover:upload"];
+  const generated = ["cover", "thumbnail", "pin", "social"].filter((k) => b.artwork[`${k}:generated`]);
+  const captions = Object.entries(r.social || {});
+
+  return `
+    <div class="card">
+      <div class="actions" style="justify-content:space-between;margin-bottom:14px">
+        <div style="min-width:0"><h3 style="margin:0">${esc(titleOf(b))}</h3>
+          <div class="sub">${stateChip(b.state)} ${url ? `<a href="${esc(url)}" target="_blank" rel="noopener">view live</a>` : ""}
+            ${b.file ? " · PDF in Drive" : b.state === "prepared" ? " · no PDF in Drive yet" : ""}
+            ${post ? " · 🗓 " + esc(fmtFull(post.publish_at)) : ""}</div></div>
+        ${b.state !== "live" ? `<button class="btn small" onclick="scheduleBook('${esc(b.slug)}')">${post ? "Move post" : "Schedule"}</button>` : ""}
+      </div>
+      ${r.error ? `<div class="msg bad show">${esc(r.error)}</div>` : ""}
+
+      <div style="margin-bottom:16px"><label for="b-name">Title <span class="hint">Blank = built from the filename${r.title ? " (last published as: " + esc(r.title) + ")" : ""}</span></label>
+        <input id="b-name" type="text" value="${esc(o.name || "")}"></div>
+      <div class="row">
+        <div class="field"><label for="b-price">Price <span class="hint">Blank = your pricing rules</span></label>
+          <input id="b-price" type="text" inputmode="decimal" value="${esc(o.price || "")}" placeholder="${esc(setting("pricing.default", "5.99"))}"></div>
+        <div class="field"><label for="b-tags">Tags <span class="hint">Comma separated</span></label>
+          <input id="b-tags" type="text" value="${esc((o.tags || []).join(", "))}"></div>
+      </div>
+      <div style="margin-bottom:16px"><label for="b-desc">Description <span class="hint">Your words — the rest of the listing is built around them</span></label>
+        <textarea id="b-desc" style="min-height:140px">${esc(o.description || "")}</textarea></div>
+      <div class="actions"><button class="btn" id="save-book" onclick="saveBook()">Save listing</button>
+        <span class="sub">${b.state === "live" ? "A live listing isn't rewritten automatically." : "Used when it publishes."}</span></div>
+    </div>
+
+    <div class="card">
+      <h2>Cover</h2>
+      <p class="sub" style="margin-bottom:12px">Upload your own, or let it be rendered from page 1 of the PDF. JPEG, PNG or WebP, up to 6 MB.</p>
+      ${upload ? `<div class="gallery" style="margin-bottom:12px;max-width:260px"><div class="shot">
+          <img src="${img(b.slug, "cover", "upload", upload)}" alt="Your cover"><div><span>your upload</span>
+          <button class="btn ghost small danger" onclick="removeCover()">Remove</button></div></div></div>` : ""}
+      <input id="b-cover" type="file" accept="image/jpeg,image/png,image/webp" onchange="uploadCover()">
+    </div>
+
+    ${generated.length ? `<div class="card"><h2>Images made for this book</h2><div class="gallery">
+      ${generated.map((k) => `<div class="shot"><img loading="lazy" src="${img(b.slug, k, "generated", b.artwork[k + ":generated"])}" alt="${k}">
+        <div><span>${k}</span><a href="${img(b.slug, k, "generated", b.artwork[k + ":generated"])}&download=1">download</a></div></div>`).join("")}
+      </div></div>` : ""}
+
+    ${captions.length ? `<div class="card"><h2>Social posts</h2><p class="sub" style="margin-bottom:12px">Ready to paste — the live link is already in each one.</p>
+      ${captions.map(([net, c], i) => `<div class="caption"><div class="actions" style="justify-content:space-between">
+        <b style="text-transform:capitalize">${esc(net)}</b>
+        <span class="actions"><a class="sub" href="${img(b.slug, c.image || "social", "generated", b.artwork[(c.image || "social") + ":generated"])}&download=1">image</a>
+        <button class="btn ghost small" onclick="copyCaption(${i})">Copy</button></span></div>
+        <pre id="cap-${i}">${esc(c.text)}</pre></div>`).join("")}</div>` : ""}`;
+}
+
+function scheduleBook(slug) {
+  BOOK = slug;
+  const post = postFor(slug);
+  if (post) return editPost(slug, post.publish_at);
+  showTab("calendar");
+  $("c-book").value = slug;
+}
+
+async function copyCaption(i) {
+  try { await navigator.clipboard.writeText($("cap-" + i).textContent); say("Copied."); }
+  catch { say("Couldn't copy — select the text and copy it by hand.", "bad"); }
+}
+
+/* -------------------------------------------------------------- schedule */
+function schedule() {
+  const days = setting("schedule.days", ["mon","tue","wed","thu","fri","sat","sun"]);
+  const auto = setting("schedule.auto", true);
+  return `
+    <div class="card">
+      <h2>Automatic publishing</h2>
+      <label class="switch"><input type="checkbox" id="s-auto" ${auto ? "checked" : ""}>
+        <span><b>Publish new books automatically</b><span class="sub">New PDFs go out one slot at a time, in the order they arrive.
+          Off = only what's on the calendar goes out.</span></span></label>
+      <div class="row">
+        <div class="field"><label for="s-time">Daily slot <span class="hint">24-hour, your time zone</span></label>
+          <input id="s-time" type="time" value="${esc(setting("schedule.publish_at", "09:15"))}"></div>
+        <div class="field"><label for="s-tz">Time zone <span class="hint">Calendar times use this too</span></label>
+          <input id="s-tz" type="text" value="${esc(tz())}" placeholder="Asia/Manila"></div>
       </div>
       <label>Days</label>
-      <div class="days" id="s-days" style="margin-bottom:18px">${dayBoxes}</div>
+      <div class="pills" id="s-days" style="margin-bottom:18px">${["mon","tue","wed","thu","fri","sat","sun"].map((d) =>
+        `<label><input type="checkbox" value="${d}" ${days.includes(d) ? "checked" : ""}> ${d}</label>`).join("")}</div>
       <div class="row">
-        <div class="field"><label for="s-max">Books per run</label>
+        <div class="field"><label for="s-max">Books per slot</label>
           <input id="s-max" type="number" min="1" max="20" value="${esc(setting("schedule.max_per_run", 1))}"></div>
-        <div class="field"><label for="s-gap">Minimum gap <span class="hint">Hours between publishes</span></label>
+        <div class="field"><label for="s-gap">Minimum gap <span class="hint">Hours between automatic posts</span></label>
           <input id="s-gap" type="number" min="0" max="720" value="${esc(setting("schedule.min_hours_between", 20))}"></div>
-        <div class="field"><label for="s-window">Window <span class="hint">Minutes a late run still counts</span></label>
+        <div class="field"><label for="s-window">Grace window <span class="hint">Minutes a late run still counts</span></label>
           <input id="s-window" type="number" min="5" max="1440" value="${esc(setting("schedule.window_minutes", 120))}"></div>
-        <div class="field"><label for="s-settle">Settle delay <span class="hint">Minutes before a new file is safe</span></label>
+        <div class="field"><label for="s-settle">Settle delay <span class="hint">Minutes a new PDF waits</span></label>
           <input id="s-settle" type="number" min="0" max="1440" value="${esc(setting("schedule.settle_minutes", 30))}"></div>
       </div>
     </div>
-
     <div class="card">
-      <h2>Price</h2>
+      <h2>Source &amp; price</h2>
       <div class="row">
-        <div class="field"><label for="s-price">Default price <span class="hint">Used when no keyword rule matches</span></label>
-          <input id="s-price" type="text" value="${esc(setting("pricing.default", "5.99"))}"></div>
-        <div class="field"><label for="s-folder">Drive folder ID</label>
-          <input id="s-folder" type="text" value="${esc(setting("source.folder_id", ""))}" placeholder="from the folder URL"></div>
+        <div class="field"><label for="s-price">Default price</label>
+          <input id="s-price" type="text" inputmode="decimal" value="${esc(setting("pricing.default", "5.99"))}"></div>
+        <div class="field"><label for="s-folder">Drive folder ID <span class="hint">The part of the folder URL after /folders/</span></label>
+          <input id="s-folder" type="text" value="${esc(setting("source.folder_id", ""))}" placeholder="from config.yml if blank"></div>
       </div>
     </div>
-
     <div class="actions"><button class="btn" id="save-schedule" onclick="saveSchedule()">Save</button></div>`;
 }
 
-function renderMarketing() {
-  $("tab-marketing").innerHTML = `
+/* ------------------------------------------------------------- marketing */
+function marketing() {
+  return `
     <div class="card">
       <h2>How your listings read</h2>
       <div style="margin-bottom:16px"><label for="m-audience">Who you're writing for</label>
-        <input id="m-audience" type="text" value="${esc(setting("marketing.audience", ""))}"></div>
+        <input id="m-audience" type="text" value="${esc(setting("marketing.audience", ""))}" placeholder="from config.yml if blank"></div>
       <div style="margin-bottom:16px"><label for="m-promise">Your shop's promise <span class="hint">Closes every listing</span></label>
         <input id="m-promise" type="text" value="${esc(setting("marketing.brand_promise", ""))}"></div>
       <div style="margin-bottom:16px"><label for="m-guarantees">Reassurance points <span class="hint">One per line</span></label>
@@ -371,9 +642,9 @@ function renderMarketing() {
       <div class="row">
         <div class="field"><label for="m-tags">Tags added to every book <span class="hint">Comma separated</span></label>
           <input id="m-tags" type="text" value="${esc((setting("marketing.base_tags", [])).join(", "))}"></div>
-        <div class="field"><label for="m-refund">Refund period <span class="hint">Days</span></label>
+        <div class="field"><label for="m-refund">Refund period</label>
           <select id="m-refund">${["inherit","none","7","14","30","183"].map((v) =>
-            `<option ${String(setting("marketing.refund_period","30"))===v?"selected":""}>${v}</option>`).join("")}</select></div>
+            `<option value="${v}" ${String(setting("marketing.refund_period","30")) === v ? "selected" : ""}>${v === "inherit" || v === "none" ? v : v + " days"}</option>`).join("")}</select></div>
       </div>
       <div><label for="m-receipt">Receipt email <span class="hint">Sent with every purchase</span></label>
         <textarea id="m-receipt" style="min-height:130px">${esc(setting("marketing.receipt", ""))}</textarea></div>
@@ -381,48 +652,7 @@ function renderMarketing() {
     <div class="actions"><button class="btn" id="save-marketing" onclick="saveMarketing()">Save</button></div>`;
 }
 
-function renderBooks() {
-  const known = new Map();
-  for (const b of STATE.queue) known.set(b.slug, { slug: b.slug, label: b.name, state: "queued" });
-  for (const b of STATE.published) {
-    known.set(b.slug, { slug: b.slug, label: b.title || b.name || b.slug,
-                        state: b.status === "published" ? "live" : (b.status || "?") });
-  }
-  const books = [...known.values()];
-
-  const list = books.map((b) => {
-    const kind = b.state === "live" ? "ok" : b.state === "queued" ? "warn" : "bad";
-    return `<button class="item" aria-current="${b.slug === BOOK}" onclick="pickBook('${esc(b.slug)}')">
-      <span class="chip ${kind}">${esc(b.state)}</span>
-      <div class="grow"><div class="t">${esc(b.label || b.slug)}</div>
-      <div class="meta">${esc(b.slug)}</div></div></button>`;
-  }).join("") || '<div class="empty">No books yet. Drop a PDF in your Drive folder.</div>';
-
-  const override = (STATE.books || []).find((b) => b && b.slug === BOOK) || {};
-  const editor = !BOOK ? '<div class="empty">Pick a book to edit its listing.</div>' : `
-    <div style="margin-bottom:16px"><label for="b-name">Title <span class="hint">Blank = generated from the filename</span></label>
-      <input id="b-name" type="text" value="${esc(override.name || "")}"></div>
-    <div class="row">
-      <div class="field"><label for="b-price">Price <span class="hint">Blank = your pricing rules</span></label>
-        <input id="b-price" type="text" value="${esc(override.price || "")}" placeholder="${esc(setting("pricing.default","5.99"))}"></div>
-      <div class="field"><label for="b-tags">Tags <span class="hint">Comma separated</span></label>
-        <input id="b-tags" type="text" value="${esc((override.tags || []).join(", "))}"></div>
-    </div>
-    <div style="margin-bottom:16px"><label for="b-desc">Description <span class="hint">Your words; the rest of the listing is built around them</span></label>
-      <textarea id="b-desc" style="min-height:150px">${esc(override.description || "")}</textarea></div>
-    <div style="margin-bottom:16px"><label for="b-cover">Cover image <span class="hint">Replaces the one rendered from page 1. JPEG, PNG or WebP, up to 6 MB.</span></label>
-      <input id="b-cover" type="file" accept="image/jpeg,image/png,image/webp" onchange="uploadCover()"></div>
-    <div class="actions"><button class="btn" id="save-book" onclick="saveBook()">Save listing</button>
-      <span class="meta" style="color:var(--muted);font-size:13px">Applies on the next run.</span></div>`;
-
-  $("tab-books").innerHTML = `
-    <div class="card"><h2>Books</h2><div class="list">${list}</div></div>
-    <div class="card"><h2>${BOOK ? esc(BOOK) : "Listing"}</h2>${editor}</div>`;
-}
-
-function pickBook(slug) { BOOK = slug === BOOK ? null : slug; renderBooks(); }
-
-/* ------------------------------------------------------------------ saving */
+/* ================================================================ saving */
 async function withButton(id, label, work) {
   const button = $(id);
   const original = button.textContent;
@@ -430,97 +660,107 @@ async function withButton(id, label, work) {
   button.innerHTML = `<span class="spin"></span>${label}`;
   try { await work(); }
   catch (err) { say(err.message, "bad"); }
-  finally { button.disabled = false; button.textContent = original; }
+  finally { if (document.body.contains(button)) { button.disabled = false; button.textContent = original; } }
 }
 
-function num(id) { const v = Number($(id).value); return Number.isFinite(v) ? v : undefined; }
+const num = (id) => { const v = Number($(id).value); return Number.isFinite(v) ? v : undefined; };
+const clean = (o) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== "" && v !== undefined));
 
-async function saveSchedule() {
-  await withButton("save-schedule", "Saving…", async () => {
-    const days = [...document.querySelectorAll("#s-days input:checked")].map((i) => i.value);
+async function saveSettings(id, mutate) {
+  await withButton(id, "Saving…", async () => {
     const merged = structuredClone(STATE.settings || {});
-    merged.schedule = { ...(merged.schedule || {}),
-      publish_at: $("s-time").value.trim(), timezone: $("s-tz").value.trim(), days,
-      max_per_run: num("s-max"), min_hours_between: num("s-gap"),
-      window_minutes: num("s-window"), settle_minutes: num("s-settle") };
-    merged.pricing = { ...(merged.pricing || {}), default: $("s-price").value.trim() };
-    merged.source = { ...(merged.source || {}), folder_id: $("s-folder").value.trim() };
+    mutate(merged);
     const out = await api("settings", { method: "POST", body: JSON.stringify({ settings: merged }) });
     STATE.settings = out.settings;
-    say("Saved. It applies on the next run.");
+    $("repo-line").textContent = `${STATE.repo} · times in ${tz()}`;
+    say("Saved. It applies from the next run.");
   });
 }
 
-async function saveMarketing() {
-  await withButton("save-marketing", "Saving…", async () => {
-    const merged = structuredClone(STATE.settings || {});
-    merged.marketing = { ...(merged.marketing || {}),
-      audience: $("m-audience").value.trim(),
-      brand_promise: $("m-promise").value.trim(),
+function saveSchedule() {
+  return saveSettings("save-schedule", (m) => {
+    m.schedule = { ...(m.schedule || {}), ...clean({
+      auto: $("s-auto").checked, publish_at: $("s-time").value, timezone: $("s-tz").value.trim(),
+      max_per_run: num("s-max"), min_hours_between: num("s-gap"),
+      window_minutes: num("s-window"), settle_minutes: num("s-settle") }),
+      days: [...document.querySelectorAll("#s-days input:checked")].map((i) => i.value) };
+    m.pricing = { ...(m.pricing || {}), ...clean({ default: $("s-price").value.trim() }) };
+    const folder = $("s-folder").value.trim();
+    m.source = { ...(m.source || {}) };
+    if (folder) m.source.folder_id = folder; else delete m.source.folder_id;
+  });
+}
+
+function saveMarketing() {
+  return saveSettings("save-marketing", (m) => {
+    m.marketing = { ...(m.marketing || {}), ...clean({
+      audience: $("m-audience").value.trim(), brand_promise: $("m-promise").value.trim(),
+      refund_period: $("m-refund").value, receipt: $("m-receipt").value.trim() }),
       guarantees: $("m-guarantees").value.split("\n").map((s) => s.trim()).filter(Boolean),
-      base_tags: $("m-tags").value.split(",").map((s) => s.trim()).filter(Boolean),
-      refund_period: $("m-refund").value,
-      receipt: $("m-receipt").value.trim() };
-    const out = await api("settings", { method: "POST", body: JSON.stringify({ settings: merged }) });
-    STATE.settings = out.settings;
-    say("Saved. It applies on the next run.");
+      base_tags: $("m-tags").value.split(",").map((s) => s.trim()).filter(Boolean) };
   });
 }
 
 async function saveBook() {
   await withButton("save-book", "Saving…", async () => {
-    const book = { name: $("b-name").value, price: $("b-price").value.trim(),
-      description: $("b-desc").value,
+    const book = { name: $("b-name").value, price: $("b-price").value.trim(), description: $("b-desc").value,
       tags: $("b-tags").value.split(",").map((s) => s.trim()).filter(Boolean) };
     await api("book", { method: "POST", body: JSON.stringify({ slug: BOOK, book }) });
     STATE = await api("state");
     say("Listing saved.");
-    renderBooks();
+    render();
   });
 }
 
-async function uploadCover() {
+function uploadCover() {
   const input = $("b-cover");
   const file = input.files && input.files[0];
   if (!file) return;
+  if (file.size > 6 * 1024 * 1024) { input.value = ""; return say("That image is over 6 MB.", "bad"); }
   say("Uploading the cover…", "info");
   const reader = new FileReader();
   reader.onload = async () => {
     try {
-      await api("artwork", { method: "POST",
-        body: JSON.stringify({ slug: BOOK, kind: "cover", data: reader.result }) });
-      say("Cover uploaded. It will be used on the next run.");
-    } catch (err) { say(err.message, "bad"); }
-    input.value = "";
+      await api("artwork", { method: "POST", body: JSON.stringify({ slug: BOOK, kind: "cover", data: reader.result }) });
+      STATE = await api("state");
+      say("Cover uploaded. It's used the next time this book publishes.");
+      render();
+    } catch (err) { say(err.message, "bad"); input.value = ""; }
   };
   reader.readAsDataURL(file);
 }
 
+async function removeCover() {
+  if (!confirm("Remove your cover? The one rendered from page 1 will be used instead.")) return;
+  try {
+    await api("artwork", { method: "DELETE", body: JSON.stringify({ slug: BOOK, kind: "cover" }) });
+    STATE = await api("state");
+    say("Removed.");
+    render();
+  } catch (err) { say(err.message, "bad"); }
+}
+
 async function triggerRun() {
   await withButton("run-go", "Starting…", async () => {
+    const slug = $("run-slug").value;
     const out = await api("run", { method: "POST", body: JSON.stringify({
-      command: $("run-cmd").value, slug: $("run-slug").value.trim(),
-      force: $("run-force").checked, dry_run: $("run-dry").checked }) });
-    say("Started. Runs take a minute or two — press Refresh to see the result.", "info");
+      command: $("run-cmd").value, slug, force: $("run-force").checked || Boolean(slug), dry_run: $("run-dry").checked }) });
+    say("Started. A run takes a minute or two — press Refresh to see it.", "info");
     STATE.runs = out.runs || STATE.runs;
     setTimeout(refresh, 9000);
   });
 }
 
-async function refresh() {
-  try { STATE = await api("state"); render(); } catch (err) { say(err.message, "bad"); }
-}
-
-/* -------------------------------------------------------------------- boot */
+/* ================================================================== boot */
 (async function boot() {
   try {
     const session = await api("session");
     if (!session.configured) {
-      document.body.innerHTML = `<div class="gate"><div class="card" style="max-width:480px">
+      document.body.innerHTML = `<div class="gate"><div class="card">
         <h1>Almost there</h1>
-        <p class="sub" style="margin-top:8px">This panel needs two environment variables in Vercel —
-        <strong>PANEL_PASSWORD</strong> and <strong>GITHUB_TOKEN</strong> — then a redeploy.
-        See <code>docs/PANEL.md</code> in your repository for the steps.</p></div></div>`;
+        <p class="sub" style="margin-top:8px">This deployment is missing ${session.missing.map((m) => `<code>${esc(m)}</code>`).join(" and ")}.
+        Add ${session.missing.length > 1 ? "them" : "it"} in Vercel → Settings → Environment Variables, then redeploy.
+        <code>docs/PANEL.md</code> in your repository has the steps.</p></div></div>`;
       return;
     }
     if (session.authed) await load(); else showGate();

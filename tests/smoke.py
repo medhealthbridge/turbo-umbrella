@@ -10,8 +10,15 @@ things that actually broke in production:
   * a run that died after `create` is repaired, not duplicated
   * a cover is always uploaded (the stand-in refuses to publish without one)
   * the page count in the title is corrected from the real PDF
+  * a calendar post goes out when it is due, and the automatic drip leaves
+    a book alone while it is on the calendar for later
 
-Run it with:  python tests/smoke.py
+Every scenario runs against whichever storage backend is configured:
+
+  python tests/smoke.py                       JSON files (no database)
+  AUTOPOST_TEST_DATABASE_URL=postgresql://... python tests/smoke.py
+                                              a real Postgres; each run gets
+                                              its own throwaway database
 """
 
 import json
@@ -114,6 +121,128 @@ def make_pdf(path, title, pages):
     c.save()
 
 
+# --------------------------------------------------------------- backends
+#
+# The scenarios below poke at stored state (mark a book failed, add a
+# calendar post, change a setting). Each backend knows how to do that in its
+# own storage, so the scenarios themselves stay identical.
+
+
+class FilesBackend:
+    name = "files"
+
+    def __init__(self, repo):
+        self.repo = repo
+
+    def env(self):
+        return {}
+
+    def set_settings(self, data):
+        (self.repo / "state" / "settings.json").write_text(json.dumps(data, indent=2))
+
+    def mark_all_failed(self):
+        path = self.repo / "state" / "published.json"
+        state = json.loads(path.read_text())
+        for entry in state["published"]:
+            entry["status"] = "failed"
+        path.write_text(json.dumps(state, indent=2))
+
+    def add_post(self, slug, minutes_from_now):
+        from datetime import datetime, timedelta, timezone
+
+        path = self.repo / "state" / "schedule.json"
+        data = json.loads(path.read_text()) if path.exists() else {"posts": []}
+        post_id = len(data["posts"]) + 1
+        when = datetime.now(timezone.utc) + timedelta(minutes=minutes_from_now)
+        data["posts"].append({"id": post_id, "slug": slug, "status": "scheduled",
+                              "publish_at": when.isoformat().replace("+00:00", "Z")})
+        path.write_text(json.dumps(data, indent=2))
+        return post_id
+
+    def post_status(self, post_id):
+        data = json.loads((self.repo / "state" / "schedule.json").read_text())
+        return next(p for p in data["posts"] if p["id"] == post_id)["status"]
+
+    def run_recorded(self):
+        return (self.repo / "docs" / "status.json").exists()
+
+    def social_recorded(self, slug):
+        return (self.repo / "content" / "social" / slug / "pinterest.txt").exists()
+
+    def generated_art(self, slug):
+        return True  # file mode keeps them in the social pack folder
+
+    def close(self):
+        pass
+
+
+class PostgresBackend:
+    name = "postgres"
+
+    def __init__(self, repo, admin_url):
+        import uuid
+
+        import psycopg
+
+        self.psycopg = psycopg
+        self.db = "autopost_smoke_" + uuid.uuid4().hex[:10]
+        self.admin_url = admin_url
+        with psycopg.connect(admin_url, autocommit=True) as conn:
+            conn.execute(f'create database "{self.db}"')
+        self.url = self._url_for(self.db)
+
+    def _url_for(self, db):
+        from urllib.parse import urlsplit, urlunsplit
+
+        parts = urlsplit(self.admin_url)
+        return urlunsplit((parts.scheme, parts.netloc, "/" + db, parts.query, parts.fragment))
+
+    def q(self, sql, params=()):
+        with self.psycopg.connect(self.url, autocommit=True) as conn:
+            cur = conn.execute(sql, params)
+            return cur.fetchall() if cur.description else []
+
+    def env(self):
+        return {"DATABASE_URL": self.url}
+
+    def set_settings(self, data):
+        from psycopg.types.json import Jsonb
+
+        self.q("insert into autopost_settings (id, data) values (1, %s) "
+               "on conflict (id) do update set data = excluded.data", (Jsonb(data),))
+
+    def mark_all_failed(self):
+        self.q("update autopost_books set status = 'failed', "
+               "record = jsonb_set(record, '{status}', '\"failed\"') where record <> '{}'::jsonb")
+
+    def add_post(self, slug, minutes_from_now):
+        rows = self.q("insert into autopost_schedule (slug, publish_at) values "
+                      "(%s, now() + make_interval(mins => %s)) returning id", (slug, minutes_from_now))
+        return rows[0][0]
+
+    def post_status(self, post_id):
+        return self.q("select status from autopost_schedule where id = %s", (post_id,))[0][0]
+
+    def run_recorded(self):
+        return bool(self.q("select 1 from autopost_runs limit 1"))
+
+    def social_recorded(self, slug):
+        rows = self.q("select record -> 'social' from autopost_books where slug = %s", (slug,))
+        social = rows[0][0] if rows else None
+        return bool(social) and "pinterest" in social and "gum.co" in social["pinterest"]["text"]
+
+    def generated_art(self, slug):
+        rows = self.q("select kind from autopost_artwork where slug = %s and source = 'generated'", (slug,))
+        return {r[0] for r in rows} >= {"cover", "thumbnail", "pin", "social"}
+
+    def close(self):
+        with self.psycopg.connect(self.admin_url, autocommit=True) as conn:
+            conn.execute(f'drop database if exists "{self.db}"')  # every connection is closed by now
+
+
+# ------------------------------------------------------------------ main
+
+
 def main():
     try:
         import reportlab  # noqa: F401
@@ -122,19 +251,20 @@ def main():
         return 2
 
     work = Path(tempfile.mkdtemp(prefix="autopost-smoke-"))
+    backend = None
     try:
         repo = work / "repo"
         shutil.copytree(
             ROOT, repo,
-            ignore=shutil.ignore_patterns(".git", "out", "__pycache__", "content"),
+            ignore=shutil.ignore_patterns(".git", "out", "__pycache__", "content", "node_modules"),
         )
         # Start from an empty history so the test is deterministic.
         (repo / "state").mkdir(exist_ok=True)
         (repo / "state" / "published.json").write_text('{"published": []}\n')
         (repo / "state" / "seen.json").write_text('{"files": {}}\n')
-        (repo / "books.json").write_text("[]\n")
-        # Start from no panel-written settings, so the test sees config.yml alone.
         (repo / "state" / "settings.json").unlink(missing_ok=True)
+        (repo / "state" / "schedule.json").unlink(missing_ok=True)
+        (repo / "books.json").write_text("[]\n")
         for stale in (repo / "docs").glob("status.json"):
             stale.unlink()
 
@@ -142,6 +272,10 @@ def main():
         cfg = cfg.replace("min_size_mb: 0.05", "min_size_mb: 0.0")
         cfg = cfg.replace("settle_minutes: 30", "settle_minutes: 0")
         (repo / "config.yml").write_text(cfg)
+
+        admin = os.environ.get("AUTOPOST_TEST_DATABASE_URL", "").strip()
+        backend = PostgresBackend(repo, admin) if admin else FilesBackend(repo)
+        print(f"storage backend: {backend.name}")
 
         drive = work / "drive"
         drive.mkdir()
@@ -162,8 +296,9 @@ def main():
             "GUMROAD_ACCESS_TOKEN": "smoke-test",
             "NO_AI": "true",
         }
-        env.pop("ANTHROPIC_API_KEY", None)
-        env.pop("GOOGLE_SERVICE_ACCOUNT_JSON", None)
+        for key in ("ANTHROPIC_API_KEY", "GOOGLE_SERVICE_ACCOUNT_JSON", "DATABASE_URL"):
+            env.pop(key, None)
+        env.update(backend.env())
 
         def run(*args):
             return subprocess.run(
@@ -173,6 +308,9 @@ def main():
 
         def products():
             return json.loads(store.read_text())["products"] if store.exists() else []
+
+        def named(fragment):
+            return [p for p in products() if fragment.lower() in p["name"].lower()]
 
         print("\n1. detection + first publish")
         first = run("--force")
@@ -189,11 +327,12 @@ def main():
               products()[0]["name"] if products() else "")
         check("tags were set", bool(products()) and len(products()[0]["tags"]) >= 4)
         check("a summary was set", bool(products()) and len(products()[0]["summary"]) > 30)
-        check("the status snapshot was written", (repo / "docs" / "status.json").exists())
-        check("the control panel was not overwritten by the run",
-              (repo / "docs" / "index.html").read_text().lstrip().startswith("<!doctype html>"))
-        check("a social pack was written",
-              (repo / "content" / "social" / "ocean-buddies-coloring" / "pinterest.txt").exists())
+        check("the run was recorded", backend.run_recorded())
+        check("social captions were kept", backend.social_recorded("ocean-buddies-coloring"))
+        check("the generated images were kept", backend.generated_art("ocean-buddies-coloring"))
+        if backend.name == "files":
+            check("the control panel was not overwritten by the run",
+                  (repo / "docs" / "index.html").read_text().lstrip().startswith("<!doctype html>"))
 
         print("\n2. re-run is a no-op (no duplicates)")
         second = run("--force")
@@ -202,10 +341,7 @@ def main():
         check("still exactly one product", len(products()) == 1, f"{len(products())} products")
 
         print("\n3. a crashed run is repaired, not duplicated")
-        state = json.loads((repo / "state" / "published.json").read_text())
-        for entry in state["published"]:
-            entry["status"] = "failed"
-        (repo / "state" / "published.json").write_text(json.dumps(state, indent=2))
+        backend.mark_all_failed()
         store_data = json.loads(store.read_text())
         for product in store_data["products"]:
             product["published"] = False
@@ -218,13 +354,12 @@ def main():
         check("it is published again", bool(products() and products()[0]["published"]))
 
         print("\n4. the schedule holds outside its window")
-        cfg = (repo / "config.yml").read_text().replace('window_minutes: 120', "window_minutes: 1")
+        cfg = (repo / "config.yml").read_text().replace("window_minutes: 120", "window_minutes: 1")
         (repo / "config.yml").write_text(cfg)
         make_pdf(drive / "dino-diggers.pdf", "Dino Diggers", 20)
         fourth = run()  # no --force, so the window applies
         check("run succeeded", fourth.returncode == 0)
-        check("it held instead of publishing",
-              "Holding" in fourth.stdout or "holding" in fourth.stdout or "nothing new" in fourth.stdout)
+        check("it held instead of publishing", "holding" in fourth.stdout.lower())
         check("no extra product was created", len(products()) == 1, f"{len(products())} products")
 
         print("\n5. dry run sends nothing")
@@ -234,30 +369,62 @@ def main():
         check("still exactly one product", len(products()) == 1, f"{len(products())} products")
 
         print("\n6. the control panel's settings override config.yml")
-        (repo / "state" / "settings.json").write_text(json.dumps({
+        backend.set_settings({
             "schedule": {"publish_at": "16:45", "timezone": "Europe/London", "days": ["tue"]},
             "pricing": {"default": "7.50"},
-            "updated_by": "control panel",
-        }, indent=2))
+        })
         plan = run("plan")
         check("run succeeded", plan.returncode == 0)
         check("the overlay was reported", "setting group(s) from the control panel" in plan.stdout)
-        check("the panel's time wins", "16:45" in plan.stdout, plan.stdout[-400:])
-        check("the panel's days win", "posts at      16:45 on tue" in plan.stdout)
+        check("the panel's time and days win", "posts at      16:45 on tue" in plan.stdout, plan.stdout[-500:])
         check("the panel's price wins", "default price 7.50" in plan.stdout)
-        # A field the panel did not set must still come from config.yml.
         check("unset fields fall back to config.yml", "max 1 per run" in plan.stdout)
 
-        (repo / "state" / "settings.json").write_text("{ not json")
-        broken = run("plan")
-        check("a corrupt settings file is survivable", broken.returncode == 0)
-        check("and is reported", "not valid JSON" in broken.stdout or "not valid JSON" in broken.stderr)
+        if backend.name == "files":
+            (repo / "state" / "settings.json").write_text("{ not json")
+            broken = run("plan")
+            check("a corrupt settings file is survivable", broken.returncode == 0)
+            check("and is reported", "not valid JSON" in broken.stdout + broken.stderr)
 
-        print(f"\n{len(PASSED)} passed, {len(FAILED)} failed")
+        print("\n7. the calendar")
+        # Automatic publishing off: from here on only the calendar may publish.
+        backend.set_settings({"schedule": {"auto": False}})
+        make_pdf(drive / "sea-turtle-story.pdf", "Sea Turtle Story", 22)
+        later = backend.add_post("sea-turtle-story", 180)
+        due = backend.add_post("dino-diggers", -5)
+
+        cal = run()  # not forced: the calendar must not need --force
+        if cal.returncode != 0:
+            print(cal.stdout[-2500:]); print(cal.stderr[-1500:])
+        check("run succeeded", cal.returncode == 0)
+        check("the due post was published", bool(named("Dino Diggers")) and named("Dino Diggers")[0]["published"])
+        check("and marked published on the calendar", backend.post_status(due) == "published",
+              backend.post_status(due))
+        check("the future post was left alone", not named("Sea Turtle"))
+        check("and is still scheduled", backend.post_status(later) == "scheduled")
+        check("automatic publishing stayed off", "automatic publishing is off" in cal.stdout)
+
+        # Auto back on and forced: the drip must still skip a book that is on
+        # the calendar for later.
+        backend.set_settings({"schedule": {"auto": True}})
+        drip = run("--force")
+        check("run succeeded", drip.returncode == 0)
+        check("the drip skipped the book reserved for later", not named("Sea Turtle"))
+        check("and said why", "on the calendar for later" in drip.stdout)
+
+        missing = backend.add_post("not-in-drive-yet", -1)
+        wait = run()
+        check("a due post with no PDF yet does not fail the run", wait.returncode == 0)
+        check("it stays scheduled, waiting for the PDF", backend.post_status(missing) == "scheduled")
+        check("and says so", "waiting for the PDF" in wait.stdout)
+
+        print(f"\n{len(PASSED)} passed, {len(FAILED)} failed  [{backend.name}]")
         if FAILED:
             print("failed: " + ", ".join(FAILED))
         return 1 if FAILED else 0
     finally:
+        if backend is not None:
+            backend.close()
         shutil.rmtree(work, ignore_errors=True)
 
 

@@ -1,59 +1,37 @@
-// Edit one book's listing: title, price, description, tags, summary.
-// Writes into books.json, which the publisher treats as per-book overrides.
-import { guard, json, readBody, getJson, putFile } from "./_lib.js";
+// Edit one book's listing. Stored in autopost_books.override; the publisher
+// treats it exactly like a books.json entry used to be treated.
+import { guard, json, readBody, bad, SLUG } from "./_lib.js";
+import { db } from "./_db.js";
 
-const FIELDS = ["name", "price", "description", "summary", "tags", "link"];
+const FIELDS = ["name", "price", "description", "summary", "tags"];
 
 export default guard(async (req, res) => {
   if (req.method !== "POST") return json(res, 405, { error: "Method not allowed." });
-
   const body = await readBody(req);
   const slug = String(body.slug || "").trim();
-  if (!/^[a-z0-9][a-z0-9-]*$/.test(slug)) {
-    return json(res, 400, { error: "That is not a valid book slug." });
-  }
+  if (!SLUG.test(slug)) throw bad("That is not a valid book slug.");
 
   const incoming = body.book || {};
-  if (incoming.price !== undefined && !/^\d+(\.\d{1,2})?$/.test(String(incoming.price))) {
-    return json(res, 400, { error: "Price must be a number like 5.99." });
+  if (incoming.price !== undefined && incoming.price !== "" && !/^\d+(\.\d{1,2})?$/.test(String(incoming.price))) {
+    throw bad("Price must be a number like 5.99.");
   }
-  if (incoming.tags !== undefined && !Array.isArray(incoming.tags)) {
-    return json(res, 400, { error: "Tags must be a list." });
-  }
+  if (incoming.tags !== undefined && !Array.isArray(incoming.tags)) throw bad("Tags must be a list.");
 
-  const books = await getJson("books.json", []);
-  if (!Array.isArray(books)) return json(res, 500, { error: "books.json is not a list." });
-
-  const entry = books.find((b) => b && b.slug === slug) || { slug };
-  let changed = false;
+  const rows = await db("select override from autopost_books where slug = $1", [slug]);
+  const override = { ...((rows[0] && rows[0].override) || {}) };
   for (const field of FIELDS) {
     if (incoming[field] === undefined) continue;
     const value = typeof incoming[field] === "string" ? incoming[field].trim() : incoming[field];
-    // An emptied field means "stop overriding this" — drop it so the
-    // generator takes over again, rather than publishing a blank.
-    if (value === "" || (Array.isArray(value) && !value.length)) {
-      if (entry[field] !== undefined) { delete entry[field]; changed = true; }
-    } else if (JSON.stringify(entry[field]) !== JSON.stringify(value)) {
-      entry[field] = value;
-      changed = true;
-    }
+    // An emptied field means "stop overriding this": the generator takes it back.
+    if (value === "" || (Array.isArray(value) && !value.length)) delete override[field];
+    else override[field] = value;
   }
 
-  if (Object.keys(entry).length === 1 && entry.slug) {
-    // Nothing left to override: remove the entry entirely.
-    const index = books.findIndex((b) => b && b.slug === slug);
-    if (index >= 0) { books.splice(index, 1); changed = true; }
-  } else if (!books.includes(entry)) {
-    books.push(entry);
-    changed = true;
-  }
-
-  if (!changed) return json(res, 200, { ok: true, unchanged: true, book: entry });
-
-  await putFile(
-    "books.json",
-    JSON.stringify(books, null, 2) + "\n",
-    `chore: update ${slug} listing from the control panel [skip ci]`
+  const saved = await db(
+    `insert into autopost_books (slug, override, updated_at) values ($1, $2::jsonb, now())
+     on conflict (slug) do update set override = excluded.override, updated_at = now()
+     returning slug, override`,
+    [slug, JSON.stringify(override)]
   );
-  return json(res, 200, { ok: true, book: entry });
+  return json(res, 200, { ok: true, book: saved[0] });
 });

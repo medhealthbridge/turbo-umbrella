@@ -19,6 +19,11 @@ version: 1
 #  edit `publish_at` here — you never touch cron or do UTC math.
 # ==================================================================
 schedule:
+  # Publish new books automatically, one slot a day, in the order they
+  # arrived. Turn it off to publish ONLY what you put on the calendar in the
+  # control panel. Calendar posts go out at their own time either way.
+  auto: true
+
   # Your local time zone. Any IANA name: Asia/Manila, Asia/Singapore,
   # America/New_York, Europe/London, ...
   timezone: Asia/Manila

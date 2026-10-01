@@ -1,11 +1,17 @@
 // Sign in and out. The only endpoint that does not require a session.
 import { json, readBody, passwordMatches, issueToken, sessionCookie, clearCookie, authed } from "./_lib.js";
+import { configured as dbConfigured } from "./_db.js";
 
 export default async function handler(req, res) {
   if (req.method === "GET") {
+    const missing = [];
+    if (!process.env.PANEL_PASSWORD) missing.push("PANEL_PASSWORD");
+    if (!dbConfigured()) missing.push("DATABASE_URL");
     return json(res, 200, {
       authed: authed(req),
-      configured: Boolean(process.env.PANEL_PASSWORD && process.env.GITHUB_TOKEN),
+      configured: missing.length === 0,
+      missing,
+      github: Boolean(process.env.GITHUB_TOKEN),
     });
   }
   if (req.method === "DELETE") {

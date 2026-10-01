@@ -28,6 +28,7 @@ SETTINGS_FILE = ROOT / "state" / "settings.json"
 # produces a working run.
 DEFAULTS = {
     "schedule": {
+        "auto": True,
         "timezone": "UTC",
         "publish_at": "09:15",
         "window_minutes": 120,
@@ -177,19 +178,11 @@ class Config:
 
 
 def _overlay():
-    """The control panel's settings, if it has written any."""
-    if not SETTINGS_FILE.exists():
-        return {}
-    import json
+    """The control panel's settings: the database when one is configured,
+    otherwise state/settings.json."""
+    from . import store
 
-    try:
-        data = json.loads(SETTINGS_FILE.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
-        log.warn(f"state/settings.json is not valid JSON ({exc}) — ignoring the panel's settings")
-        return {}
-    if not isinstance(data, dict):
-        log.warn("state/settings.json should be an object — ignoring it")
-        return {}
+    data = dict(store.get().settings() or {})
     data.pop("updated_at", None)
     data.pop("updated_by", None)
     return data

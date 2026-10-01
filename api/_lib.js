@@ -1,4 +1,6 @@
-// Shared helpers for the control panel's API.
+// Shared helpers for the control panel's API: the session, JSON responses,
+// and the GitHub API (used only to start and list publish runs — everything
+// the panel saves goes to the database, see _db.js).
 //
 // No dependencies on purpose: Node 20's built-in fetch and crypto are enough,
 // so Vercel installs nothing and a cold start is a few milliseconds.
@@ -74,20 +76,34 @@ export function guard(handler) {
           "Settings → Environment Variables, then redeploy.",
       });
     }
-    if (!TOKEN) {
+    if (!(process.env.DATABASE_URL || "").trim()) {
       return json(res, 503, {
         error:
-          "GITHUB_TOKEN is not set on this deployment. The panel can't read or " +
-          "write the repository without it.",
+          "DATABASE_URL is not set on this deployment. Add your Neon connection " +
+          "string in Vercel → Settings → Environment Variables, then redeploy.",
       });
     }
     if (!authed(req)) return json(res, 401, { error: "Not signed in." });
     try {
       return await handler(req, res);
     } catch (err) {
-      return json(res, 500, { error: String(err && err.message ? err.message : err) });
+      const status = Number.isInteger(err.status) && err.status >= 400 && err.status < 600 ? err.status : 500;
+      return json(res, status, { error: String(err && err.message ? err.message : err) });
     }
   };
+}
+
+/** An error that becomes a 4xx with a readable message. */
+export function bad(message, status = 400) {
+  const err = new Error(message);
+  err.status = status;
+  return err;
+}
+
+export const SLUG = /^[a-z0-9][a-z0-9-]{0,119}$/;
+
+export function githubConfigured() {
+  return Boolean(TOKEN);
 }
 
 // ------------------------------------------------------------------- output
@@ -135,55 +151,27 @@ async function gh(path, options = {}) {
   }
   if (!resp.ok) {
     const detail = (data && data.message) || resp.statusText;
-    const err = new Error(`GitHub ${resp.status}: ${detail}`);
-    err.status = resp.status;
+    const hint =
+      resp.status === 401 ? " — the GITHUB_TOKEN in Vercel is invalid or has expired." :
+      resp.status === 403 || resp.status === 404 ? " — check the token can access this repository with Actions: read and write." :
+      "";
+    // Always a 502 to the browser. Passing GitHub's own status through would
+    // turn an expired token's 401 into "you are signed out" in the panel.
+    const err = new Error(`GitHub ${resp.status}: ${detail}${hint}`);
+    err.status = 502;
     throw err;
   }
   return data;
 }
 
-/** A file's decoded text and blob sha, or null when it does not exist. */
-export async function getFile(path) {
-  try {
-    const data = await gh(
-      `/repos/${REPO}/contents/${encodeURI(path)}?ref=${encodeURIComponent(BRANCH)}`
-    );
-    return {
-      sha: data.sha,
-      text: Buffer.from(data.content || "", "base64").toString("utf8"),
-    };
-  } catch (err) {
-    if (err.status === 404) return null;
-    throw err;
-  }
-}
-
-export async function getJson(path, fallback) {
-  const file = await getFile(path);
-  if (!file) return fallback;
-  try {
-    return JSON.parse(file.text);
-  } catch {
-    return fallback;
-  }
-}
-
-/** Create or replace a file. `content` is a string or a Buffer. */
-export async function putFile(path, content, message) {
-  const existing = await getFile(path);
-  const body = {
-    message,
-    branch: BRANCH,
-    content: Buffer.from(content).toString("base64"),
-  };
-  if (existing) body.sha = existing.sha;
-  return gh(`/repos/${REPO}/contents/${encodeURI(path)}`, {
-    method: "PUT",
-    body: JSON.stringify(body),
-  });
-}
-
 export async function dispatchWorkflow(workflow, inputs) {
+  if (!TOKEN) {
+    throw bad(
+      "GITHUB_TOKEN is not set on this deployment, so the panel can't start a run. " +
+        "Scheduling still works: the Neon scheduler and the hourly run will pick it up.",
+      503
+    );
+  }
   return gh(`/repos/${REPO}/actions/workflows/${workflow}/dispatches`, {
     method: "POST",
     body: JSON.stringify({ ref: BRANCH, inputs }),
@@ -191,6 +179,7 @@ export async function dispatchWorkflow(workflow, inputs) {
 }
 
 export async function listRuns(limit = 8) {
+  if (!TOKEN) return [];
   const data = await gh(
     `/repos/${REPO}/actions/runs?per_page=${limit}&branch=${encodeURIComponent(BRANCH)}`
   );

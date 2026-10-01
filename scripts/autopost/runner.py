@@ -4,7 +4,7 @@ import os
 import tempfile
 from pathlib import Path
 
-from . import dashboard, images, log, marketing, metadata, scheduler, social, sources, state as state_mod
+from . import dashboard, images, log, marketing, metadata, scheduler, sources, state as state_mod
 from .config import ROOT
 from .platforms import enabled as enabled_platforms
 
@@ -51,14 +51,9 @@ def collect(cfg, st):
             new_count += 1
             log.ok(f"new file detected: {source_file.name}  →  {slug}")
 
-    # Panel uploads live in the repo and beat anything in Drive, so they go last.
-    repo_artwork = sources.scan_repo_artwork(ROOT)
-    artwork = list(artwork) + repo_artwork
-
     log.info(
         f"{len(files)} PDF(s) in the folder, {new_count} new since the last run"
         + (f", {len(artwork)} image(s) available as artwork" if artwork else "")
-        + (f" ({len(repo_artwork)} uploaded in the panel)" if repo_artwork else "")
     )
 
     for source_file in files:
@@ -128,11 +123,21 @@ def publish_one(cfg, st, slug, source_file, service, overrides, dry_run, use_ai,
                     supplied[kind] = sources.download_drive(service, image_file.id, dest)
             except Exception as exc:
                 log.warn(f"could not fetch {image_file.name} ({exc}) — rendering the {kind} instead", indent=2)
+        # Covers uploaded in the control panel beat a Drive image and a render.
+        try:
+            supplied.update(st.store.uploaded_artwork(slug, tmp))
+        except Exception as exc:
+            log.warn(f"could not load uploaded artwork ({exc}) — rendering instead", indent=2)
 
         art_dir = PREVIEW_DIR if dry_run else tmp
         images.build(book, pdf_path, art_dir / slug, cfg, supplied=supplied)
         if not dry_run:
-            images.save_dashboard_cover(book, cfg)
+            if st.store.kind == "files":
+                images.save_dashboard_cover(book, cfg)
+            try:
+                st.store.save_generated(slug, book.images)
+            except Exception as exc:
+                log.warn(f"could not save the generated images ({exc})", indent=2)
 
         results = {}
         failures = []
@@ -149,7 +154,18 @@ def publish_one(cfg, st, slug, source_file, service, overrides, dry_run, use_ai,
             st.record_platform(slug, platform.name, **dict(result))
 
         listing["results"] = results
-        pack_dir = None if dry_run else social.write_pack(book, cfg)
+        pack_dir = None if dry_run else st.store.save_social(book, cfg)
+
+        # Captions are kept with the book so the panel can show them, ready to
+        # copy, with the live link already appended.
+        url = next((r.get("url") for r in results.values() if r and r.get("url")), None)
+        captions = {
+            network: {
+                "text": pack["text"] + (f"\n\n{url}" if url else ""),
+                "image": pack.get("image", "social"),
+            }
+            for network, pack in (listing.get("social") or {}).items()
+        }
 
         statuses = {r.get("status") for r in results.values()}
         if dry_run:
@@ -171,7 +187,10 @@ def publish_one(cfg, st, slug, source_file, service, overrides, dry_run, use_ai,
                 summary=listing["summary"],
                 tags=listing["tags"],
                 social_pack=pack_dir,
+                social=captions,
+                url=url,
                 ai_polished=listing["ai_polished"],
+                error=None,
             )
 
         return book, overall, failures
@@ -215,51 +234,108 @@ def run(cfg, force=False, dry_run=False, only_slug="", use_ai=True, scan_only=Fa
         return 0
 
     log.step("Schedule")
-    may_publish, reason = scheduler.decide(cfg, st, force=force or dry_run)
+    store_ = st.store
     upcoming = scheduler.next_run(cfg)
     log.info(f"now:  {scheduler.local_now(cfg).strftime('%a %d %b %H:%M %Z')}")
-    log.info(f"next: {upcoming.strftime('%a %d %b %H:%M %Z')}")
-    log.info(f"{'publishing' if may_publish else 'holding'} — {reason}")
+    log.info(f"next automatic window: {upcoming.strftime('%a %d %b %H:%M %Z')}")
 
-    if not may_publish:
+    by_slug = dict(candidates)
+    work = []  # (slug, source_file, calendar post or None)
+
+    # 1. The calendar. A post whose time has come goes out now, whatever the
+    #    automatic window, gap or settle delay says — you picked the time.
+    due = [] if only_slug else store_.due_posts()
+    for post in due:
+        slug = post["slug"]
+        if st.is_live(slug):
+            log.info(f"calendar: {slug} is already live — marking its post done")
+            if not dry_run:
+                store_.finish_post(post["id"], "published", None)
+            continue
+        if slug not in by_slug:
+            why = "waiting for the PDF — it is not in the Drive folder yet"
+            log.warn(f"calendar: {slug} was due at {post['publish_at']} but {why}")
+            if not dry_run:
+                store_.note_post_error(post["id"], why)
+            continue
+        log.ok(f"calendar: {slug} was due at {post['publish_at']} — publishing it now", indent=1)
+        work.append((slug, by_slug[slug], post))
+
+    # 2. The automatic drip, for books nobody has put on the calendar.
+    reserved = set() if only_slug else store_.future_slugs()
+    auto_on = bool(cfg.get("schedule.auto", True))
+    held = []
+
+    if only_slug:
+        work = [(only_slug, by_slug[only_slug], None)]
+        may_publish, reason = True, f"publishing {only_slug} by hand"
+    elif not auto_on:
+        may_publish, reason = False, "automatic publishing is off — only the calendar posts"
+    else:
+        may_publish, reason = scheduler.decide(cfg, st, force=force or dry_run)
+    log.info(f"automatic: {'publishing' if may_publish else 'holding'} — {reason}")
+
+    if may_publish and not only_slug:
+        limit = max(1, int(cfg.get("schedule.max_per_run", 1)))
+        taken = {slug for slug, _, _ in work}
+        auto_count = 0
+        for slug, source_file in candidates:
+            if slug in taken:
+                continue
+            if slug in reserved:
+                why = "on the calendar for later — the automatic drip leaves it alone"
+                held.append((slug, why))
+                log.info(f"holding {slug} — {why}")
+                continue
+            if auto_count >= limit:
+                why = f"holding for the next run (max_per_run is {limit})"
+                held.append((slug, why))
+                log.info(f"holding {slug} — {why}")
+                continue
+            ready, why = scheduler.settled(cfg, st, source_file)
+            if not ready and not force:
+                held.append((slug, why))
+                log.info(f"holding {slug} — {why}")
+                continue
+            work.append((slug, source_file, None))
+            auto_count += 1
+
+    if not work:
         st.save()
-        log.summary(f"### Autopost\n\nHolding: {reason}\n\nNext window: {upcoming:%a %d %b %H:%M %Z}\n")
+        note = reason if not candidates or not may_publish else "nothing is ready yet"
+        if not candidates:
+            log.ok("nothing new to publish — every PDF in the folder is already live", indent=0)
+        log.summary(f"### Autopost\n\nNothing published: {note}\n\nNext automatic window: {upcoming:%a %d %b %H:%M %Z}\n")
+        if not dry_run and cfg.get("dashboard.enabled", True):
+            dashboard.build(cfg, st)
         return 0
 
-    if not candidates:
-        st.save()
-        log.ok("nothing new to publish — every PDF in the folder is already live", indent=0)
-        log.summary(f"### Autopost\n\nNothing new to publish.\n\nNext window: {upcoming:%a %d %b %H:%M %Z}\n")
-        return 0
-
-    limit = max(1, int(cfg.get("schedule.max_per_run", 1)))
-    published, held, failed = [], [], []
-
-    for slug, source_file in candidates:
-        if len(published) >= limit and not only_slug:
-            held.append((slug, f"holding for the next run (max_per_run is {limit})"))
-            continue
-        ready, why = scheduler.settled(cfg, st, source_file)
-        if not ready and not (force or only_slug):
-            held.append((slug, why))
-            log.info(f"holding {slug} — {why}")
-            continue
+    published, failed = [], []
+    for slug, source_file, post in work:
         try:
             book, overall, failures = publish_one(
                 cfg, st, slug, source_file, service, overrides, dry_run, use_ai, artwork
             )
             if overall in ("published", "dry-run"):
                 published.append((slug, book))
+                if not dry_run:
+                    store_.complete_slug(slug)
             else:
                 failed.append((slug, ", ".join(failures) or overall))
+                if post and not dry_run:
+                    store_.finish_post(post["id"], "failed", ", ".join(failures) or overall)
         except log.AutopostError as exc:
             log.error(f"{slug}: {exc}")
             st.record(slug, status="failed", error=str(exc))
             failed.append((slug, str(exc)))
+            if post and not dry_run:
+                store_.finish_post(post["id"], "failed", str(exc))
         except Exception as exc:  # never let one bad book kill the run
             log.error(f"{slug}: unexpected error: {exc}")
             st.record(slug, status="failed", error=repr(exc))
             failed.append((slug, repr(exc)))
+            if post and not dry_run:
+                store_.finish_post(post["id"], "failed", repr(exc))
 
     log.step("Result")
     for slug, book in published:
@@ -271,12 +347,10 @@ def run(cfg, force=False, dry_run=False, only_slug="", use_ai=True, scan_only=Fa
             log.ok(f"{slug} → dry run, nothing was sent (previews in out/{slug}/)", indent=0)
         else:
             log.ok(f"{slug} → {url or 'live'}", indent=0)
-    for slug, why in held:
-        log.info(f"held: {slug} — {why}", indent=0)
     for slug, why in failed:
         log.error(f"failed: {slug} — {why}", indent=0)
 
-    remaining = len(candidates) - len(published)
+    remaining = max(0, len(candidates) - len(published))
     log.info(f"{remaining} book(s) still queued", indent=0)
 
     if not dry_run:

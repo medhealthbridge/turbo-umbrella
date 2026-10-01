@@ -74,13 +74,13 @@ Add `ANTHROPIC_API_KEY` as a secret and the hook, summary, tags and social
 captions get a rewrite pass. Without it you still get a complete listing;
 the generator is deterministic and needs no key.
 
-### 4. Turn on the control panel
+### 4. Turn on the control panel and the scheduler
 
-The panel is a web page that runs your shop — schedule, listings, covers,
-publish on demand — so you never open the code. It needs a GitHub token and a
-password set in Vercel; **`docs/PANEL.md` has the five-minute walkthrough.**
-
-Once it is on, most of this README is reference rather than instructions.
+You run the shop from a web page: a calendar, every listing, covers, the
+schedule and the copy, all saved in your Neon database. You never open the
+code. **`docs/PANEL.md` walks through the one-time setup**: a GitHub token,
+`DATABASE_URL` in GitHub and Vercel, a panel password, and one `neon deploy`
+for the scheduler.
 
 ---
 
@@ -107,13 +107,12 @@ The filename becomes the slug and the title:
 `draft`, `wip`, `test` or `copy of` in the name is skipped, so
 work-in-progress can live in the same folder.
 
-To change anything else, **open the panel**: posting time, days, how many per
-run, prices, your guarantees and tags, and any single book's title, price,
-description or cover.
+Everything else happens in **the panel**: schedule a book for a date and a
+time, edit any listing, upload a cover, change the posting time, days, prices
+and copy, and copy each book's ready-made social posts.
 
-`config.yml` still holds everything, commented, and you can still edit it by
-hand. The panel writes `state/settings.json`, which is merged over it — so the
-panel wins where both set the same thing, and the file's comments survive.
+`config.yml` still holds the documented defaults. Whatever you set in the
+panel is stored in the database and overrides it.
 
 ### Run it by hand
 
@@ -235,11 +234,13 @@ before anything is created.
 ## Layout
 
 ```
-config.yml              documented defaults, editable by hand
-state/settings.json     what the control panel writes; wins over config.yml
-books.json              per-book overrides (the panel writes these too)
-api/                    serverless functions behind the panel
+config.yml              documented defaults (the panel overrides them)
+db/schema.sql           the database, shared by the publisher and the panel
+neon.ts                 the Neon scheduler function + its 5-minute trigger
+neon/scheduler.ts       starts a publish run when a calendar post is due
+api/                    the panel's API (Vercel), on Neon
 docs/index.html         the control panel itself
+books.json              imported into the database once, then unused
 scripts/publish.py      entry point
 scripts/autopost/
   config.py             config.yml + defaults + env overrides
@@ -251,13 +252,14 @@ scripts/autopost/
   platforms/            gumroad.py + the adapter layer
   social.py             the ready-to-post packs
   dashboard.py          the status page
+  store.py              Postgres (DATABASE_URL) or JSON files, one interface
   state.py              what we have seen and published
-  runner.py             one run, start to finish
-state/                  committed after every run
+  runner.py             one run: calendar posts first, then the daily slot
+state/                  only used when there is no database
 docs/status.json        a snapshot written after every run
 content/social/         the social packs
 assets/artwork/         covers uploaded in the panel
-tests/smoke.py          end-to-end test, no network
+tests/                  end-to-end tests, run on JSON files and on Postgres
 ```
 
 Still manual on Gumroad, because its CLI has no flag for them: the

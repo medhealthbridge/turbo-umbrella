@@ -1,8 +1,21 @@
 {
   "name": "autopost-panel",
   "private": true,
-  "version": "2.1.0",
-  "description": "Serverless API behind the autopost control panel. No dependencies: the functions use Node's built-in fetch and crypto, so a cold start is milliseconds.",
+  "version": "3.0.0",
+  "description": "The control panel's API (Vercel) and the Neon scheduler function. Production talks to Neon over HTTPS; the tests run every query against a real local Postgres through node-postgres.",
   "type": "module",
-  "engines": { "node": ">=20" }
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.mjs"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.1.0"
+  },
+  "devDependencies": {
+    "@neon/config": "^1.8.3",
+    "esbuild": "^0.28.2",
+    "pg": "^8.23.1"
+  }
 }
