@@ -7,9 +7,17 @@ name: Check
 on:
   push:
     branches: [main]
-    paths: ["scripts/**", "config.yml", "tests/**", "requirements*.txt", ".github/workflows/check.yml"]
+    paths: &watched
+      - "scripts/**"
+      - "config.yml"
+      - "tests/**"
+      - "requirements*.txt"
+      # The workflows themselves: a change to a runner image, an action
+      # version or a step has to be verified too, and only this job can
+      # do that.
+      - ".github/workflows/**"
   pull_request:
-    paths: ["scripts/**", "config.yml", "tests/**", "requirements*.txt"]
+    paths: *watched
   workflow_dispatch:
 
 jobs:
