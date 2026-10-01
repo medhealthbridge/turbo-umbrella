@@ -1,0 +1,255 @@
+####################################################################
+#  AUTOPOST — CONTROL PANEL
+#
+#  This one file controls everything. Edit it in GitHub (pencil icon),
+#  commit, and the next run picks it up. No code changes needed.
+#
+#  Nothing here is secret. Tokens live in
+#  Settings → Secrets and variables → Actions.
+####################################################################
+
+version: 1
+
+
+# ==================================================================
+#  1. WHEN TO POST
+#
+#  The workflow wakes up every hour. This section decides whether it
+#  actually publishes anything. So to change your posting time you
+#  edit `publish_at` here — you never touch cron or do UTC math.
+# ==================================================================
+schedule:
+  # Publish new books automatically, one slot a day, in the order they
+  # arrived. Turn it off to publish ONLY what you put on the calendar in the
+  # control panel. Calendar posts go out at their own time either way.
+  auto: true
+
+  # Your local time zone. Any IANA name: Asia/Manila, Asia/Singapore,
+  # America/New_York, Europe/London, ...
+  timezone: Asia/Manila
+
+  # Local time of day to publish, 24-hour "HH:MM".
+  publish_at: "09:15"
+
+  # How long after publish_at a run still counts as "on time". Give it
+  # room: GitHub's scheduled runs are often 5-20 minutes late, and are
+  # occasionally skipped entirely under load.
+  window_minutes: 120
+
+  # Days of the week the poster is allowed to publish.
+  # Drop days to slow the drip down (e.g. [mon, wed, fri]).
+  days: [mon, tue, wed, thu, fri, sat, sun]
+
+  # How many books may go live in a single run.
+  max_per_run: 1
+
+  # Hard floor between two publishes, in hours. This is the real
+  # safety net against dumping your whole catalog in one morning if a
+  # schedule misfires or someone spams the Run workflow button.
+  min_hours_between: 20
+
+  # Wait this many minutes after a file appears in Drive before
+  # publishing it, so a half-finished upload or a quick re-upload
+  # never goes live. Set 0 to publish as soon as it is spotted.
+  settle_minutes: 30
+
+
+# ==================================================================
+#  2. WHERE THE FILES COME FROM
+# ==================================================================
+source:
+  kind: gdrive
+
+  # The Drive folder to watch. This is the part of the folder URL
+  # after /folders/ :
+  #   drive.google.com/drive/folders/161VeirIHlTqbRb3__oURDOMVVRv4KD3N
+  #                                  ^------------ this ------------^
+  # Setting it here means you do NOT need the GDRIVE_FOLDER_ID
+  # repository variable (if that variable is set, it wins).
+  folder_id: "161VeirIHlTqbRb3__oURDOMVVRv4KD3N"
+
+  # Also look inside sub-folders of the folder above.
+  recursive: true
+
+  # Skip files whose name contains any of these (case-insensitive).
+  # Handy for parking work-in-progress in the same folder.
+  ignore_patterns: ["draft", "wip", "test", "~$", "copy of"]
+
+  # Anything smaller than this is treated as a failed/partial upload.
+  min_size_mb: 0.05
+
+
+# ==================================================================
+#  3. PRICE
+#
+#  A new file gets the first price whose keywords match its filename
+#  or title. No match → `default`. You can always override one book
+#  in books.json.
+# ==================================================================
+pricing:
+  default: "5.99"
+  rules:
+    - match: ["coloring", "colouring", "color book"]
+      price: "4.99"
+    - match: ["storybook", "story book", "growth mindset"]
+      price: "5.99"
+    - match: ["bundle", "pack", "collection", "mega"]
+      price: "12.99"
+    - match: ["worksheet", "planner", "tracker", "flashcard"]
+      price: "3.99"
+
+
+# ==================================================================
+#  4. MARKETING
+#
+#  How the listing copy gets written. The generator is deterministic —
+#  it always produces a complete, benefit-led listing with zero API
+#  keys. If you add an ANTHROPIC_API_KEY secret it will additionally
+#  rewrite the hook and the social captions with Claude.
+# ==================================================================
+marketing:
+  # Who you are writing for. Shapes wording throughout.
+  audience: "parents, grandparents and teachers of kids aged 3-8"
+
+  # Your shop's promise, used in the closing block of every listing.
+  brand_promise: "Printable activity books that keep kids off screens and proud of themselves."
+
+  # Instant-download products convert on speed + reassurance. These
+  # lines appear as a scannable block near the top of every listing.
+  guarantees:
+    - "Instant download — the PDF is in your inbox the second you pay"
+    - "Print it as many times as you like, forever, for your own family or classroom"
+    - "US Letter and A4 friendly, no special paper needed"
+    - "30-day no-questions refund"
+
+  # Appended to every book's own tags, then de-duplicated.
+  # Gumroad allows a limited number of tags; the best are the ones a
+  # buyer would actually type into the search box.
+  base_tags: ["printable", "instant download", "kids activity", "pdf"]
+  max_tags: 10
+
+  # Marketplace SEO. `title_suffix` is appended to auto-generated
+  # titles, with {pages} filled in from the real PDF.
+  title_suffix: " (Printable PDF, {pages} Pages)"
+  max_title_length: 120
+  max_summary_length: 190
+
+  # Sent in the purchase-receipt email. This is your single best
+  # review-and-repeat-purchase lever, so it asks for both.
+  receipt: |
+    Thank you so much — your PDF is attached and ready to print.
+
+    Print it as many times as you like for your own family or classroom.
+    If the download gives you any trouble at all, just reply to this
+    email and I'll sort it out personally.
+
+    If your little one enjoys it, a quick rating means the world to a
+    small shop like mine. ⭐
+
+  refund_period: "30"   # inherit | none | 7 | 14 | 30 | 183
+
+
+# ==================================================================
+#  5. COVER IMAGES
+#
+#  Rendered from page 1 of the PDF. A listing with no cover very
+#  often refuses to leave draft — this is why your first run stalled.
+# ==================================================================
+images:
+  enabled: true
+  # Cover shown on the product page (16:9).
+  cover: {width: 1280, height: 720}
+  # Square thumbnail used in grids and search results.
+  thumbnail: {width: 800, height: 800}
+  # Vertical image for Pinterest — the single best traffic source for
+  # printables. 2:3 is Pinterest's preferred ratio.
+  pin: {width: 1000, height: 1500}
+  # Square image for Instagram / Facebook.
+  social: {width: 1080, height: 1080}
+  quality: 90
+
+
+# ==================================================================
+#  6. SELLING PLATFORMS
+#
+#  Turn one on and every future book is posted there too. Gumroad is
+#  live today; the rest are wired in and waiting on their credentials.
+#  See docs/PLATFORMS.md to add one of your own.
+# ==================================================================
+platforms:
+  gumroad:
+    enabled: true
+    # Gumroad's own CLI, installed by the workflow.
+    # Needs secret: GUMROAD_ACCESS_TOKEN
+    publish: true          # false = create the draft but leave it unpublished
+
+  payhip:
+    enabled: false         # needs secret: PAYHIP_API_KEY
+
+  lemonsqueezy:
+    enabled: false         # needs secrets: LEMONSQUEEZY_API_KEY, LEMONSQUEEZY_STORE_ID
+
+  etsy:
+    enabled: false         # needs secrets: ETSY_API_KEY, ETSY_SHOP_ID
+                           # note: Etsy digital listings need manual review the first time
+
+
+# ==================================================================
+#  7. SOCIAL MEDIA
+#
+#  Every publish writes a ready-to-post pack — caption, hashtags and
+#  a sized image per network — into content/social/<slug>/.
+#  `auto_post: false` means it is prepared for you to copy-paste (no
+#  API keys, no app review, works today). Flip a network's `auto_post`
+#  on once you have connected it.
+# ==================================================================
+social:
+  enabled: true
+  auto_post: false
+
+  # Where the copy-paste packs are written and committed.
+  output_dir: content/social
+
+  networks:
+    pinterest:
+      enabled: true
+      image: pin
+      # Pinterest rewards keyword-rich, sentence-style descriptions.
+      hashtags: ["#printablesforkids", "#kidsactivities", "#coloringpages", "#screenfreekids", "#homeschoolprintables"]
+      max_length: 480
+    instagram:
+      enabled: true
+      image: social
+      hashtags: ["#printablesforkids", "#toddleractivities", "#screenfreeplay", "#momsofinstagram", "#kidscrafts", "#homeschool"]
+      max_length: 2100
+    facebook:
+      enabled: true
+      image: social
+      hashtags: ["#printables", "#kidsactivities", "#parenting"]
+      max_length: 2000
+    x:
+      enabled: true
+      image: social
+      hashtags: ["#printables", "#kidsactivities"]
+      max_length: 275
+    tiktok:
+      enabled: false
+      image: pin
+      hashtags: ["#printables", "#momtok", "#kidsactivities"]
+      max_length: 2100
+
+
+# ==================================================================
+#  8. DASHBOARD
+#
+#  A single self-contained HTML page rebuilt after every run: what is
+#  live, what is queued, what is scheduled next, and what went wrong.
+#  Publish it with the "Deploy dashboard" workflow (GitHub Pages).
+# ==================================================================
+dashboard:
+  enabled: true
+  title: "Autopost"
+  subtitle: "Printable books — publishing pipeline"
+  output: docs/index.html
+  # Currency symbol used for the estimated-value figures.
+  currency: "$"

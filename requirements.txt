@@ -1,3 +1,20 @@
+# Google Drive (watching the folder, downloading the PDFs)
 google-api-python-client==2.149.0
 google-auth==2.35.0
 gdown==5.2.0
+
+# Neon Postgres (only used when DATABASE_URL is set)
+psycopg[binary]==3.2.3
+
+# Configuration
+PyYAML==6.0.2
+tzdata==2024.2          # time zones on runners without a system tz database
+
+# Reading and rendering the PDFs (cover art, real page counts).
+# pypdfium2 ships prebuilt wheels, so CI needs no apt-get step.
+pypdf==5.1.0
+pypdfium2==4.30.0
+pillow==10.4.0
+
+# Optional Claude copy polish (only used when ANTHROPIC_API_KEY is set)
+requests==2.32.3
