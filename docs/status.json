@@ -1,9 +1,35 @@
 {
-  "generated_at": "2026-10-01T00:22:25.564510+00:00",
+  "generated_at": "2026-10-01T02:17:33+00:00",
   "live": 1,
   "queued": 0,
+  "needs_attention": [],
   "catalog_value": 4.99,
-  "next_window": "2026-10-01T09:15:00+08:00",
+  "pages_published": 0,
+  "next_window": "2026-10-02T09:15:00+08:00",
+  "schedule": {
+    "timezone": "Asia/Manila",
+    "publish_at": "09:15",
+    "days": [
+      "mon",
+      "tue",
+      "wed",
+      "thu",
+      "fri",
+      "sat",
+      "sun"
+    ],
+    "max_per_run": 1
+  },
+  "platforms": [
+    "gumroad"
+  ],
+  "networks": [
+    "facebook",
+    "instagram",
+    "pinterest",
+    "x"
+  ],
+  "queue": [],
   "books": [
     {
       "slug": "mermaid-friends-coloring-3",
@@ -20,5 +46,6 @@
       "status": "published",
       "updated_at": "2026-09-30T14:22:10Z"
     }
-  ]
+  ],
+  "log": []
 }

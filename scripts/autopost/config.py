@@ -19,6 +19,11 @@ from . import log
 ROOT = Path(__file__).resolve().parents[2]
 CONFIG_FILE = ROOT / "config.yml"
 
+# Written by the web control panel, merged over config.yml. Keeping the
+# panel's output in its own JSON file means config.yml never has to be
+# machine-rewritten, so all of its comments survive.
+SETTINGS_FILE = ROOT / "state" / "settings.json"
+
 # Every key the code reads has a default here, so an empty config.yml still
 # produces a working run.
 DEFAULTS = {
@@ -171,6 +176,25 @@ class Config:
         return str(self.get("pricing.default", "5.99"))
 
 
+def _overlay():
+    """The control panel's settings, if it has written any."""
+    if not SETTINGS_FILE.exists():
+        return {}
+    import json
+
+    try:
+        data = json.loads(SETTINGS_FILE.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        log.warn(f"state/settings.json is not valid JSON ({exc}) — ignoring the panel's settings")
+        return {}
+    if not isinstance(data, dict):
+        log.warn("state/settings.json should be an object — ignoring it")
+        return {}
+    data.pop("updated_at", None)
+    data.pop("updated_by", None)
+    return data
+
+
 def load(path=None):
     path = Path(path) if path else CONFIG_FILE
     raw = {}
@@ -183,4 +207,10 @@ def load(path=None):
             log.fail(f"{path.name} must be a mapping at the top level")
     else:
         log.warn(f"{path.name} not found — using built-in defaults")
-    return Config(_merge(DEFAULTS, raw), path)
+
+    merged = _merge(DEFAULTS, raw)
+    overlay = _overlay()
+    if overlay:
+        merged = _merge(merged, overlay)
+        log.info(f"applied {len(overlay)} setting group(s) from the control panel")
+    return Config(merged, path)

@@ -1,0 +1,8 @@
+{
+  "name": "autopost-panel",
+  "private": true,
+  "version": "2.1.0",
+  "description": "Serverless API behind the autopost control panel. No dependencies: the functions use Node's built-in fetch and crypto, so a cold start is milliseconds.",
+  "type": "module",
+  "engines": { "node": ">=20" }
+}

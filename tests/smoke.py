@@ -126,13 +126,17 @@ def main():
         repo = work / "repo"
         shutil.copytree(
             ROOT, repo,
-            ignore=shutil.ignore_patterns(".git", "out", "__pycache__", "docs", "content"),
+            ignore=shutil.ignore_patterns(".git", "out", "__pycache__", "content"),
         )
         # Start from an empty history so the test is deterministic.
         (repo / "state").mkdir(exist_ok=True)
         (repo / "state" / "published.json").write_text('{"published": []}\n')
         (repo / "state" / "seen.json").write_text('{"files": {}}\n')
         (repo / "books.json").write_text("[]\n")
+        # Start from no panel-written settings, so the test sees config.yml alone.
+        (repo / "state" / "settings.json").unlink(missing_ok=True)
+        for stale in (repo / "docs").glob("status.json"):
+            stale.unlink()
 
         cfg = (repo / "config.yml").read_text()
         cfg = cfg.replace("min_size_mb: 0.05", "min_size_mb: 0.0")
@@ -185,7 +189,9 @@ def main():
               products()[0]["name"] if products() else "")
         check("tags were set", bool(products()) and len(products()[0]["tags"]) >= 4)
         check("a summary was set", bool(products()) and len(products()[0]["summary"]) > 30)
-        check("the dashboard was written", (repo / "docs" / "index.html").exists())
+        check("the status snapshot was written", (repo / "docs" / "status.json").exists())
+        check("the control panel was not overwritten by the run",
+              (repo / "docs" / "index.html").read_text().lstrip().startswith("<!doctype html>"))
         check("a social pack was written",
               (repo / "content" / "social" / "ocean-buddies-coloring" / "pinterest.txt").exists())
 
@@ -226,6 +232,26 @@ def main():
         check("run succeeded", fifth.returncode == 0)
         check("previews were written", (repo / "out").exists())
         check("still exactly one product", len(products()) == 1, f"{len(products())} products")
+
+        print("\n6. the control panel's settings override config.yml")
+        (repo / "state" / "settings.json").write_text(json.dumps({
+            "schedule": {"publish_at": "16:45", "timezone": "Europe/London", "days": ["tue"]},
+            "pricing": {"default": "7.50"},
+            "updated_by": "control panel",
+        }, indent=2))
+        plan = run("plan")
+        check("run succeeded", plan.returncode == 0)
+        check("the overlay was reported", "setting group(s) from the control panel" in plan.stdout)
+        check("the panel's time wins", "16:45" in plan.stdout, plan.stdout[-400:])
+        check("the panel's days win", "posts at      16:45 on tue" in plan.stdout)
+        check("the panel's price wins", "default price 7.50" in plan.stdout)
+        # A field the panel did not set must still come from config.yml.
+        check("unset fields fall back to config.yml", "max 1 per run" in plan.stdout)
+
+        (repo / "state" / "settings.json").write_text("{ not json")
+        broken = run("plan")
+        check("a corrupt settings file is survivable", broken.returncode == 0)
+        check("and is reported", "not valid JSON" in broken.stdout or "not valid JSON" in broken.stderr)
 
         print(f"\n{len(PASSED)} passed, {len(FAILED)} failed")
         if FAILED:

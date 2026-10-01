@@ -74,33 +74,13 @@ Add `ANTHROPIC_API_KEY` as a secret and the hook, summary, tags and social
 captions get a rewrite pass. Without it you still get a complete listing;
 the generator is deterministic and needs no key.
 
-### 4. Turn the dashboard on
+### 4. Turn on the control panel
 
-Pick one host. Either serves the same `docs/` folder, and both refresh on
-their own: each run commits the rebuilt dashboard, and that push triggers a
-redeploy.
+The panel is a web page that runs your shop — schedule, listings, covers,
+publish on demand — so you never open the code. It needs a GitHub token and a
+password set in Vercel; **`docs/PANEL.md` has the five-minute walkthrough.**
 
-**Vercel** — import the repo. `vercel.json` already tells it there is nothing
-to build and to serve `docs/`, and `.vercelignore` keeps the Python out of the
-upload so Vercel does not mistake this for a web app and ask for an entrypoint.
-Make sure Vercel's production branch is the branch that actually has `docs/`
-on it.
-
-If Vercel still tries to build this as a Python app, set **Project → Settings
-→ Build and Deployment → Root Directory** to `docs`. With the root set there,
-the only thing Vercel can see is a folder of static files — there is no
-`requirements.txt` in scope to detect, so the question cannot come up. In that
-mode the root `vercel.json` is not read, and `outputDirectory` no longer
-applies.
-
-**GitHub Pages** — **Settings → Pages → Source: GitHub Actions**, then run the
-**Deploy dashboard** workflow once.
-
-Both are public URLs. The dashboard shows titles, prices and product links —
-all of it already public on your storefront — but `status.json` also carries
-product ids and any error text. If you would rather it were not world-readable,
-Vercel's Deployment Protection (Project → Settings → Deployment Protection)
-puts it behind a login.
+Once it is on, most of this README is reference rather than instructions.
 
 ---
 
@@ -127,13 +107,17 @@ The filename becomes the slug and the title:
 `draft`, `wip`, `test` or `copy of` in the name is skipped, so
 work-in-progress can live in the same folder.
 
-To change anything else, edit **`config.yml`** — the posting time, the days,
-how many per run, prices by keyword, the guarantees, the tags, which
-platforms and which social networks. It is commented throughout.
+To change anything else, **open the panel**: posting time, days, how many per
+run, prices, your guarantees and tags, and any single book's title, price,
+description or cover.
+
+`config.yml` still holds everything, commented, and you can still edit it by
+hand. The panel writes `state/settings.json`, which is merged over it — so the
+panel wins where both set the same thing, and the file's comments survive.
 
 ### Run it by hand
 
-**Actions → Publish → Run workflow**:
+From the panel's Overview tab, or **Actions → Publish → Run workflow**:
 
 | Command | What it does |
 |---|---|
@@ -251,8 +235,11 @@ before anything is created.
 ## Layout
 
 ```
-config.yml              everything you would want to change
-books.json              optional per-book overrides
+config.yml              documented defaults, editable by hand
+state/settings.json     what the control panel writes; wins over config.yml
+books.json              per-book overrides (the panel writes these too)
+api/                    serverless functions behind the panel
+docs/index.html         the control panel itself
 scripts/publish.py      entry point
 scripts/autopost/
   config.py             config.yml + defaults + env overrides
@@ -267,8 +254,9 @@ scripts/autopost/
   state.py              what we have seen and published
   runner.py             one run, start to finish
 state/                  committed after every run
-docs/index.html         the dashboard
+docs/status.json        a snapshot written after every run
 content/social/         the social packs
+assets/artwork/         covers uploaded in the panel
 tests/smoke.py          end-to-end test, no network
 ```
 

@@ -238,9 +238,33 @@ def match_artwork(images, slug):
     for image in images:
         stem = Path(image.name).stem.strip().lower()
         if stem == slug:
-            matched.setdefault("cover", image)
+            matched["cover"] = image
             continue
         for kind in ART_SUFFIXES:
             if stem == f"{slug}-{kind}":
                 matched[kind] = image
     return matched
+
+
+def scan_repo_artwork(root):
+    """Artwork committed into the repo, e.g. uploaded through the control panel.
+
+    Lives in assets/artwork/ and uses the same filename convention as the
+    Drive folder. Takes precedence over a Drive image, because uploading one
+    here is the more recent, more deliberate act.
+    """
+    folder = Path(root) / "assets" / "artwork"
+    if not folder.is_dir():
+        return []
+    found = []
+    for path in sorted(folder.iterdir()):
+        if path.is_file() and path.suffix.lower() in (".jpg", ".jpeg", ".png", ".webp"):
+            found.append(
+                SourceFile(
+                    id=f"repo:{path.name}",
+                    name=path.name,
+                    size=path.stat().st_size,
+                    path=path,
+                )
+            )
+    return found

@@ -3,176 +3,531 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Autopost</title>
+<title>Autopost Control</title>
 <style>
 :root {
-  --bg: #f6f7f9;       --panel: #ffffff;     --panel-2: #fbfbfd;
-  --ink: #16181d;      --muted: #6b7280;     --line: #e4e6ec;
-  --accent: #4f46e5;   --accent-soft: #eef2ff;
-  --ok: #067647;       --ok-soft: #e7f6ee;
-  --warn: #92400e;     --warn-soft: #fef3c7;
-  --bad: #b42318;      --bad-soft: #fee4e2;
-  --radius: 14px;
-  --shadow: 0 1px 2px rgba(16,18,24,.05), 0 8px 24px -12px rgba(16,18,24,.12);
+  --bg:#f6f7f9; --panel:#fff; --panel-2:#fbfbfd; --ink:#16181d; --muted:#6b7280;
+  --line:#e4e6ec; --accent:#4f46e5; --accent-ink:#fff; --accent-soft:#eef2ff;
+  --ok:#067647; --ok-soft:#e7f6ee; --warn:#92400e; --warn-soft:#fef3c7;
+  --bad:#b42318; --bad-soft:#fee4e2; --radius:14px;
+  --shadow:0 1px 2px rgba(16,18,24,.05), 0 8px 24px -12px rgba(16,18,24,.12);
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #0d0f14;     --panel: #14171f;     --panel-2: #191d27;
-    --ink: #e9eaf0;    --muted: #9aa1b1;     --line: #262b37;
-    --accent: #a5b4fc; --accent-soft: #1e2140;
-    --ok: #6ee7b7;     --ok-soft: #0d2b22;
-    --warn: #fcd34d;   --warn-soft: #2e2410;
-    --bad: #fca5a5;    --bad-soft: #341a1a;
-    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 12px 32px -16px rgba(0,0,0,.7);
-  }
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0d0f14; --panel:#14171f; --panel-2:#191d27; --ink:#e9eaf0; --muted:#9aa1b1;
+  --line:#262b37; --accent:#6366f1; --accent-ink:#fff; --accent-soft:#1e2140;
+  --ok:#6ee7b7; --ok-soft:#0d2b22; --warn:#fcd34d; --warn-soft:#2e2410;
+  --bad:#fca5a5; --bad-soft:#341a1a;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 12px 32px -16px rgba(0,0,0,.7);
+}}
+:root[data-theme="dark"]{
+  --bg:#0d0f14; --panel:#14171f; --panel-2:#191d27; --ink:#e9eaf0; --muted:#9aa1b1;
+  --line:#262b37; --accent:#6366f1; --accent-ink:#fff; --accent-soft:#1e2140;
+  --ok:#6ee7b7; --ok-soft:#0d2b22; --warn:#fcd34d; --warn-soft:#2e2410;
+  --bad:#fca5a5; --bad-soft:#341a1a;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 12px 32px -16px rgba(0,0,0,.7);
 }
-:root[data-theme="dark"] {
-  --bg: #0d0f14;       --panel: #14171f;     --panel-2: #191d27;
-  --ink: #e9eaf0;      --muted: #9aa1b1;     --line: #262b37;
-  --accent: #a5b4fc;   --accent-soft: #1e2140;
-  --ok: #6ee7b7;       --ok-soft: #0d2b22;
-  --warn: #fcd34d;     --warn-soft: #2e2410;
-  --bad: #fca5a5;      --bad-soft: #341a1a;
-  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 12px 32px -16px rgba(0,0,0,.7);
-}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:15px/1.55 ui-sans-serif,-apple-system,"Segoe UI",Roboto,Inter,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1040px;margin:0 auto;padding:28px 16px 80px}
+h1{font-size:22px;margin:0;letter-spacing:-.02em}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 12px;font-weight:620}
+h3{font-size:15px;margin:0 0 4px}
+p.sub{color:var(--muted);font-size:13.5px;margin:2px 0 0}
+a{color:var(--accent)}
 
-* { box-sizing: border-box; }
-body {
-  margin: 0; background: var(--bg); color: var(--ink);
-  font: 15px/1.55 ui-sans-serif, -apple-system, "Segoe UI", Roboto, Inter, sans-serif;
-  -webkit-font-smoothing: antialiased;
-}
-.wrap { max-width: 1100px; margin: 0 auto; padding: 32px 16px 72px; }
+/* login */
+.gate{min-height:100vh;display:grid;place-items:center;padding:20px}
+.gate form{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  box-shadow:var(--shadow);padding:30px;width:100%;max-width:370px}
+.gate h1{margin-bottom:6px}
 
-header { display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 26px; }
-header .grow { flex: 1 1 260px; min-width: 0; }
-h1 { font-size: 26px; margin: 0 0 2px; letter-spacing: -.02em; }
-.sub { color: var(--muted); font-size: 14px; margin: 0; }
-button.theme {
-  background: var(--panel); color: var(--muted); border: 1px solid var(--line);
-  border-radius: 999px; padding: 7px 14px; font: inherit; font-size: 13px; cursor: pointer;
-}
-button.theme:hover { color: var(--ink); border-color: var(--muted); }
+header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:20px}
+header .grow{flex:1 1 220px;min-width:0}
 
-.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 26px; }
-.kpi { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); }
-.kpi .n { font-size: 27px; font-weight: 640; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
-.kpi .l { color: var(--muted); font-size: 12.5px; text-transform: uppercase; letter-spacing: .06em; margin-top: 2px; }
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:24px;overflow-x:auto}
+.tabs button{background:none;border:0;border-bottom:2px solid transparent;color:var(--muted);
+  font:inherit;font-size:14px;padding:9px 13px;cursor:pointer;white-space:nowrap}
+.tabs button:hover{color:var(--ink)}
+.tabs button[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent);font-weight:580}
 
-.next { display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
-  background: var(--accent-soft); border: 1px solid var(--line); border-left: 4px solid var(--accent);
-  border-radius: var(--radius); padding: 15px 18px; margin-bottom: 30px; }
-.next .when { font-weight: 640; }
-.next .why { color: var(--muted); font-size: 13.5px; }
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  box-shadow:var(--shadow);padding:20px;margin-bottom:18px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:18px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:15px 17px;box-shadow:var(--shadow)}
+.kpi .n{font-size:25px;font-weight:640;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.kpi .l{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
 
-h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted);
-  margin: 0 0 12px; font-weight: 620; }
-section { margin-bottom: 34px; }
+label{display:block;font-size:13px;font-weight:560;margin:0 0 5px}
+label .hint{display:block;font-weight:400;color:var(--muted);font-size:12.5px;margin-top:2px}
+input[type=text],input[type=password],input[type=number],select,textarea{
+  width:100%;background:var(--panel-2);color:var(--ink);border:1px solid var(--line);
+  border-radius:9px;padding:9px 11px;font:inherit;font-size:14px}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:transparent}
+textarea{min-height:88px;resize:vertical;line-height:1.5}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:16px}
+.field{min-width:0}
 
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(232px, 1fr)); gap: 14px; }
-.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
-  overflow: hidden; box-shadow: var(--shadow); display: flex; flex-direction: column; }
-.card .art { aspect-ratio: 1; background: var(--panel-2) center/cover no-repeat;
-  border-bottom: 1px solid var(--line); display: grid; place-items: center; color: var(--muted); font-size: 12px; }
-.card .body { padding: 13px 14px 14px; display: flex; flex-direction: column; gap: 7px; flex: 1; }
-.card .t { font-weight: 600; font-size: 14px; line-height: 1.35; }
-.card .t a { color: inherit; text-decoration: none; }
-.card .t a:hover { color: var(--accent); text-decoration: underline; }
-.card .meta { color: var(--muted); font-size: 12.5px; display: flex; gap: 8px; flex-wrap: wrap;
-  margin-top: auto; font-variant-numeric: tabular-nums; }
+.days{display:flex;gap:6px;flex-wrap:wrap}
+.days label{display:flex;align-items:center;gap:6px;background:var(--panel-2);border:1px solid var(--line);
+  border-radius:999px;padding:6px 12px;font-size:13px;font-weight:500;cursor:pointer;margin:0}
+.days input{margin:0}
+.days label:has(input:checked){background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
 
-.chips { display: flex; gap: 5px; flex-wrap: wrap; }
-.chip { font-size: 11px; padding: 2.5px 8px; border-radius: 999px; border: 1px solid var(--line);
-  color: var(--muted); background: var(--panel-2); white-space: nowrap; }
-.chip.ok   { color: var(--ok);   background: var(--ok-soft);   border-color: transparent; }
-.chip.warn { color: var(--warn); background: var(--warn-soft); border-color: transparent; }
-.chip.bad  { color: var(--bad);  background: var(--bad-soft);  border-color: transparent; }
+button.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:9px;
+  padding:10px 16px;font:inherit;font-size:14px;font-weight:560;cursor:pointer}
+button.btn:hover{filter:brightness(1.08)}
+button.btn:disabled{opacity:.5;cursor:default}
+button.ghost{background:var(--panel);color:var(--ink);border:1px solid var(--line)}
+button.ghost:hover{border-color:var(--muted);filter:none}
+.actions{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
 
-table { width: 100%; border-collapse: collapse; background: var(--panel);
-  border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
-th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--line); font-size: 14px; vertical-align: top; }
-th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 620; background: var(--panel-2); }
-tr:last-child td { border-bottom: 0; }
-td.slug { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
-td.why { color: var(--muted); font-size: 13px; }
+.chip{font-size:11.5px;padding:3px 9px;border-radius:999px;border:1px solid var(--line);
+  color:var(--muted);background:var(--panel-2);white-space:nowrap}
+.chip.ok{color:var(--ok);background:var(--ok-soft);border-color:transparent}
+.chip.warn{color:var(--warn);background:var(--warn-soft);border-color:transparent}
+.chip.bad{color:var(--bad);background:var(--bad-soft);border-color:transparent}
+.chips{display:flex;gap:5px;flex-wrap:wrap}
 
-.empty { background: var(--panel); border: 1px dashed var(--line); border-radius: var(--radius);
-  padding: 26px; text-align: center; color: var(--muted); font-size: 14px; }
+.list{display:flex;flex-direction:column;gap:2px}
+.item{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:10px;
+  background:var(--panel-2);border:1px solid transparent;cursor:pointer;text-align:left;width:100%;
+  font:inherit;color:inherit}
+.item:hover{border-color:var(--line)}
+.item[aria-current="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.item .meta{color:var(--muted);font-size:12.5px}
+.item .grow{flex:1;min-width:0}
+.item .t{font-weight:560;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
-details.logs { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
-details.logs summary { padding: 13px 16px; cursor: pointer; font-size: 13.5px; color: var(--muted); user-select: none; }
-details.logs summary:hover { color: var(--ink); }
-details.logs pre { margin: 0; padding: 0 16px 16px; font: 12.5px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace;
-  white-space: pre-wrap; word-break: break-word; border-top: 1px solid var(--line); padding-top: 14px; }
-.lvl-error { color: var(--bad); } .lvl-warn { color: var(--warn); } .lvl-ok { color: var(--ok); }
+.msg{border-radius:10px;padding:11px 14px;font-size:14px;margin-bottom:14px;display:none}
+.msg.show{display:block}
+.msg.ok{background:var(--ok-soft);color:var(--ok)}
+.msg.bad{background:var(--bad-soft);color:var(--bad)}
+.msg.info{background:var(--accent-soft);color:var(--accent)}
 
-footer { color: var(--muted); font-size: 12.5px; text-align: center; margin-top: 44px; }
-footer code { background: var(--panel); padding: 2px 6px; border-radius: 6px; border: 1px solid var(--line); }
-
-@media (max-width: 560px) {
-  .wrap { padding: 22px 14px 56px; }
-  h1 { font-size: 22px; }
-  .kpi .n { font-size: 23px; }
-  th, td { padding: 9px 11px; }
-}
+.empty{color:var(--muted);font-size:14px;padding:18px;text-align:center;
+  border:1px dashed var(--line);border-radius:10px}
+.cover{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:10px;border:1px solid var(--line);background:var(--panel-2)}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid currentColor;border-right-color:transparent;
+  border-radius:50%;animation:s .7s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes s{to{transform:rotate(360deg)}}
+footer{color:var(--muted);font-size:12.5px;text-align:center;margin-top:34px}
+@media(max-width:560px){.wrap{padding:20px 13px 60px}h1{font-size:19px}}
 </style>
 </head>
 <body>
-<div class="wrap">
+
+<div id="gate" class="gate" hidden>
+  <form onsubmit="signIn(event)">
+    <h1>Autopost</h1>
+    <p class="sub" style="margin-bottom:18px">Sign in to manage your shop.</p>
+    <div id="gate-msg" class="msg bad"></div>
+    <label for="pw">Password</label>
+    <input id="pw" type="password" autocomplete="current-password" required autofocus>
+    <div style="margin-top:14px"><button class="btn" style="width:100%" type="submit">Sign in</button></div>
+  </form>
+</div>
+
+<div id="app" class="wrap" hidden>
   <header>
     <div class="grow">
       <h1>Autopost</h1>
-      <p class="sub">Printable books — publishing pipeline</p>
+      <p class="sub" id="repo-line"></p>
     </div>
-    <button class="theme" onclick="toggleTheme()">Theme</button>
+    <button class="btn ghost" onclick="toggleTheme()">Theme</button>
+    <button class="btn ghost" onclick="signOut()">Sign out</button>
   </header>
 
-  <div class="kpis"><div class="kpi"><div class="n">1</div><div class="l">live</div></div><div class="kpi"><div class="n">0</div><div class="l">queued</div></div><div class="kpi"><div class="n">$4.99</div><div class="l">catalog value</div></div><div class="kpi"><div class="n">0</div><div class="l">pages published</div></div></div>
-
-  <div class="next">
-    <div>
-      <div class="when">Next window · Thu 01 Oct, 09:15 PST</div>
-      <div class="why">1 per run · mon, tue, wed, thu, fri, sat, sun at 09:15 Asia/Manila · platforms: gumroad</div>
-    </div>
+  <div class="tabs" role="tablist">
+    <button role="tab" data-tab="overview" aria-selected="true" onclick="showTab('overview')">Overview</button>
+    <button role="tab" data-tab="schedule" aria-selected="false" onclick="showTab('schedule')">Schedule</button>
+    <button role="tab" data-tab="marketing" aria-selected="false" onclick="showTab('marketing')">Marketing</button>
+    <button role="tab" data-tab="books" aria-selected="false" onclick="showTab('books')">Books</button>
   </div>
 
-  <section>
-    <h2>Live</h2>
-    <div class="grid"><div class="card"><div class="art">no cover</div><div class="body"><div class="t">Mermaid Friends Coloring Book 3</div><div class="chips"><span class="chip ok">gumroad</span></div><div class="meta">$4.99 · 30 Sep 2026</div></div></div></div>
-  </section>
+  <div id="msg" class="msg"></div>
 
-  <section>
-    <h2>Queue</h2>
-    <div class="empty">The queue is empty — every PDF in the folder is already live.</div>
-  </section>
+  <section id="tab-overview"></section>
+  <section id="tab-schedule" hidden></section>
+  <section id="tab-marketing" hidden></section>
+  <section id="tab-books" hidden></section>
 
-  <section>
-    <h2>Needs attention</h2>
-    <div class="empty">Nothing needs attention.</div>
-  </section>
-
-  <section>
-    <h2>Last run</h2>
-    <details class="logs"><summary>0 log lines — 01 Oct 2026 00:22 UTC</summary><pre>(no log for this run)</pre></details>
-  </section>
-
-  <footer>
-    Rebuilt automatically after every run · edit <code>config.yml</code> to change the schedule, price or copy
-  </footer>
+  <footer>Changes are committed to your repository and take effect on the next run.</footer>
 </div>
+
 <script>
+let STATE = null, TAB = "overview", BOOK = null;
+
+/* ----------------------------------------------------------------- helpers */
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+function say(text, kind = "ok", target = "msg") {
+  const el = $(target);
+  el.className = "msg " + kind + " show";
+  el.textContent = text;
+  if (kind === "ok") setTimeout(() => { if (el.textContent === text) el.className = "msg"; }, 4000);
+}
+
+async function api(path, options) {
+  const resp = await fetch("/api/" + path, {
+    headers: { "content-type": "application/json" },
+    ...options,
+  });
+  let data = {};
+  try { data = await resp.json(); } catch {}
+  if (resp.status === 401 && path !== "session") { showGate(); throw new Error("Signed out."); }
+  if (!resp.ok) throw new Error(data.error || `Request failed (${resp.status}).`);
+  return data;
+}
+
 function toggleTheme() {
   const root = document.documentElement;
-  const dark = matchMedia('(prefers-color-scheme: dark)').matches;
-  const now = root.dataset.theme === 'auto' ? (dark ? 'light' : 'dark')
-            : root.dataset.theme === 'dark' ? 'light' : 'dark';
-  root.dataset.theme = now;
-  try { localStorage.setItem('autopost-theme', now); } catch (e) {}
+  const dark = matchMedia("(prefers-color-scheme: dark)").matches;
+  root.dataset.theme = root.dataset.theme === "auto" ? (dark ? "light" : "dark")
+                     : root.dataset.theme === "dark" ? "light" : "dark";
+  try { localStorage.setItem("autopost-theme", root.dataset.theme); } catch {}
 }
-try {
-  const saved = localStorage.getItem('autopost-theme');
-  if (saved) document.documentElement.dataset.theme = saved;
-} catch (e) {}
+try { const t = localStorage.getItem("autopost-theme"); if (t) document.documentElement.dataset.theme = t; } catch {}
+
+/* -------------------------------------------------------------------- auth */
+function showGate() { $("gate").hidden = false; $("app").hidden = true; }
+
+async function signIn(event) {
+  event.preventDefault();
+  const button = event.target.querySelector("button");
+  button.disabled = true;
+  button.innerHTML = '<span class="spin"></span>Checking…';
+  try {
+    await api("session", { method: "POST", body: JSON.stringify({ password: $("pw").value }) });
+    $("gate").hidden = true;
+    await load();
+  } catch (err) {
+    say(err.message, "bad", "gate-msg");
+  } finally {
+    button.disabled = false;
+    button.textContent = "Sign in";
+  }
+}
+
+async function signOut() {
+  await api("session", { method: "DELETE" }).catch(() => {});
+  location.reload();
+}
+
+/* -------------------------------------------------------------------- data */
+async function load() {
+  $("app").hidden = false;
+  STATE = await api("state");
+  $("repo-line").textContent = `${STATE.repo} · ${STATE.branch}`;
+  render();
+}
+
+function setting(path, fallback) {
+  const parts = path.split(".");
+  let node = STATE.settings;
+  for (const part of parts) {
+    if (!node || typeof node !== "object" || !(part in node)) return fallback;
+    node = node[part];
+  }
+  return node ?? fallback;
+}
+
+/* ------------------------------------------------------------------ render */
+function showTab(tab) {
+  TAB = tab;
+  for (const button of document.querySelectorAll('[role="tab"]'))
+    button.setAttribute("aria-selected", String(button.dataset.tab === tab));
+  for (const name of ["overview", "schedule", "marketing", "books"])
+    $("tab-" + name).hidden = name !== tab;
+  render();
+}
+
+function render() {
+  if (!STATE) return;
+  ({ overview: renderOverview, schedule: renderSchedule,
+     marketing: renderMarketing, books: renderBooks }[TAB])();
+}
+
+function renderOverview() {
+  const live = STATE.published.filter((b) => b.status === "published");
+  const problems = STATE.published.filter((b) => b.status && b.status !== "published");
+  const value = live.reduce((sum, b) => sum + (parseFloat(b.price) || 0), 0);
+  const currency = setting("dashboard.currency", "$");
+
+  const runs = STATE.runs.map((run) => {
+    const kind = run.conclusion === "success" ? "ok"
+               : run.status !== "completed" ? "warn"
+               : run.conclusion ? "bad" : "";
+    const label = run.status === "completed" ? run.conclusion : run.status;
+    return `<div class="item" style="cursor:default">
+      <span class="chip ${kind}">${esc(label || "?")}</span>
+      <div class="grow"><div class="t">${esc(run.name)}</div>
+      <div class="meta">${new Date(run.created_at).toLocaleString()} · ${esc(run.event)}</div></div>
+      <a class="meta" href="${esc(run.url)}" target="_blank" rel="noopener">open</a></div>`;
+  }).join("") || '<div class="empty">No runs yet.</div>';
+
+  const cards = live.slice().reverse().map((b) => {
+    const url = Object.values(b.platforms || {}).map((p) => p && p.url).find(Boolean);
+    const title = b.title || b.name || b.slug;
+    return `<div class="item" style="cursor:default"><div class="grow">
+      <div class="t">${url ? `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(title)}</a>` : esc(title)}</div>
+      <div class="meta">${currency}${esc(b.price || "—")}${b.pages ? " · " + esc(b.pages) + " pages" : ""}</div>
+      </div><span class="chip ok">live</span></div>`;
+  }).join("") || '<div class="empty">Nothing published yet.</div>';
+
+  $("tab-overview").innerHTML = `
+    <div class="kpis">
+      <div class="kpi"><div class="n">${live.length}</div><div class="l">live</div></div>
+      <div class="kpi"><div class="n">${STATE.queue.length}</div><div class="l">queued</div></div>
+      <div class="kpi"><div class="n">${currency}${value.toFixed(2)}</div><div class="l">catalog value</div></div>
+      <div class="kpi"><div class="n">${problems.length}</div><div class="l">need attention</div></div>
+    </div>
+
+    <div class="card">
+      <h2>Run it now</h2>
+      <p class="sub" style="margin-bottom:14px">Publishing respects your schedule unless you tick Force.</p>
+      <div class="row" style="margin-bottom:12px">
+        <div class="field"><label for="run-cmd">What to do</label>
+          <select id="run-cmd">
+            <option value="run">Publish the next book</option>
+            <option value="scan">Look for new files only</option>
+            <option value="plan">Show the plan (changes nothing)</option>
+            <option value="dashboard">Rebuild the dashboard data</option>
+          </select></div>
+        <div class="field"><label for="run-slug">One specific book <span class="hint">Optional slug</span></label>
+          <input id="run-slug" type="text" placeholder="leave blank for the next in queue"></div>
+      </div>
+      <div class="days" style="margin-bottom:14px">
+        <label><input type="checkbox" id="run-force"> Force (ignore the schedule)</label>
+        <label><input type="checkbox" id="run-dry" checked> Dry run (send nothing)</label>
+      </div>
+      <div class="actions">
+        <button class="btn" id="run-go" onclick="triggerRun()">Start</button>
+        <button class="btn ghost" onclick="refresh()">Refresh</button>
+      </div>
+    </div>
+
+    <div class="card"><h2>Recent runs</h2><div class="list">${runs}</div></div>
+    ${problems.length ? `<div class="card"><h2>Needs attention</h2><div class="list">${problems.map((b) =>
+      `<div class="item" style="cursor:default"><span class="chip bad">${esc(b.status)}</span>
+       <div class="grow"><div class="t">${esc(b.slug)}</div>
+       <div class="meta">${esc(b.error || "needs another run")}</div></div></div>`).join("")}</div></div>` : ""}
+    <div class="card"><h2>Live</h2><div class="list">${cards}</div></div>`;
+}
+
+function renderSchedule() {
+  const days = setting("schedule.days", ["mon","tue","wed","thu","fri","sat","sun"]);
+  const dayBoxes = ["mon","tue","wed","thu","fri","sat","sun"].map((d) =>
+    `<label><input type="checkbox" value="${d}" ${days.includes(d) ? "checked" : ""}> ${d}</label>`).join("");
+
+  $("tab-schedule").innerHTML = `
+    <div class="card">
+      <h2>When to publish</h2>
+      <div class="row">
+        <div class="field"><label for="s-time">Posting time <span class="hint">Your local time, 24-hour</span></label>
+          <input id="s-time" type="text" value="${esc(setting("schedule.publish_at", "09:15"))}" placeholder="09:15"></div>
+        <div class="field"><label for="s-tz">Time zone</label>
+          <input id="s-tz" type="text" value="${esc(setting("schedule.timezone", "Asia/Manila"))}" placeholder="Asia/Manila"></div>
+      </div>
+      <label>Days</label>
+      <div class="days" id="s-days" style="margin-bottom:18px">${dayBoxes}</div>
+      <div class="row">
+        <div class="field"><label for="s-max">Books per run</label>
+          <input id="s-max" type="number" min="1" max="20" value="${esc(setting("schedule.max_per_run", 1))}"></div>
+        <div class="field"><label for="s-gap">Minimum gap <span class="hint">Hours between publishes</span></label>
+          <input id="s-gap" type="number" min="0" max="720" value="${esc(setting("schedule.min_hours_between", 20))}"></div>
+        <div class="field"><label for="s-window">Window <span class="hint">Minutes a late run still counts</span></label>
+          <input id="s-window" type="number" min="5" max="1440" value="${esc(setting("schedule.window_minutes", 120))}"></div>
+        <div class="field"><label for="s-settle">Settle delay <span class="hint">Minutes before a new file is safe</span></label>
+          <input id="s-settle" type="number" min="0" max="1440" value="${esc(setting("schedule.settle_minutes", 30))}"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Price</h2>
+      <div class="row">
+        <div class="field"><label for="s-price">Default price <span class="hint">Used when no keyword rule matches</span></label>
+          <input id="s-price" type="text" value="${esc(setting("pricing.default", "5.99"))}"></div>
+        <div class="field"><label for="s-folder">Drive folder ID</label>
+          <input id="s-folder" type="text" value="${esc(setting("source.folder_id", ""))}" placeholder="from the folder URL"></div>
+      </div>
+    </div>
+
+    <div class="actions"><button class="btn" id="save-schedule" onclick="saveSchedule()">Save</button></div>`;
+}
+
+function renderMarketing() {
+  $("tab-marketing").innerHTML = `
+    <div class="card">
+      <h2>How your listings read</h2>
+      <div style="margin-bottom:16px"><label for="m-audience">Who you're writing for</label>
+        <input id="m-audience" type="text" value="${esc(setting("marketing.audience", ""))}"></div>
+      <div style="margin-bottom:16px"><label for="m-promise">Your shop's promise <span class="hint">Closes every listing</span></label>
+        <input id="m-promise" type="text" value="${esc(setting("marketing.brand_promise", ""))}"></div>
+      <div style="margin-bottom:16px"><label for="m-guarantees">Reassurance points <span class="hint">One per line</span></label>
+        <textarea id="m-guarantees">${esc((setting("marketing.guarantees", [])).join("\n"))}</textarea></div>
+      <div class="row">
+        <div class="field"><label for="m-tags">Tags added to every book <span class="hint">Comma separated</span></label>
+          <input id="m-tags" type="text" value="${esc((setting("marketing.base_tags", [])).join(", "))}"></div>
+        <div class="field"><label for="m-refund">Refund period <span class="hint">Days</span></label>
+          <select id="m-refund">${["inherit","none","7","14","30","183"].map((v) =>
+            `<option ${String(setting("marketing.refund_period","30"))===v?"selected":""}>${v}</option>`).join("")}</select></div>
+      </div>
+      <div><label for="m-receipt">Receipt email <span class="hint">Sent with every purchase</span></label>
+        <textarea id="m-receipt" style="min-height:130px">${esc(setting("marketing.receipt", ""))}</textarea></div>
+    </div>
+    <div class="actions"><button class="btn" id="save-marketing" onclick="saveMarketing()">Save</button></div>`;
+}
+
+function renderBooks() {
+  const known = new Map();
+  for (const b of STATE.queue) known.set(b.slug, { slug: b.slug, label: b.name, state: "queued" });
+  for (const b of STATE.published) {
+    known.set(b.slug, { slug: b.slug, label: b.title || b.name || b.slug,
+                        state: b.status === "published" ? "live" : (b.status || "?") });
+  }
+  const books = [...known.values()];
+
+  const list = books.map((b) => {
+    const kind = b.state === "live" ? "ok" : b.state === "queued" ? "warn" : "bad";
+    return `<button class="item" aria-current="${b.slug === BOOK}" onclick="pickBook('${esc(b.slug)}')">
+      <span class="chip ${kind}">${esc(b.state)}</span>
+      <div class="grow"><div class="t">${esc(b.label || b.slug)}</div>
+      <div class="meta">${esc(b.slug)}</div></div></button>`;
+  }).join("") || '<div class="empty">No books yet. Drop a PDF in your Drive folder.</div>';
+
+  const override = (STATE.books || []).find((b) => b && b.slug === BOOK) || {};
+  const editor = !BOOK ? '<div class="empty">Pick a book to edit its listing.</div>' : `
+    <div style="margin-bottom:16px"><label for="b-name">Title <span class="hint">Blank = generated from the filename</span></label>
+      <input id="b-name" type="text" value="${esc(override.name || "")}"></div>
+    <div class="row">
+      <div class="field"><label for="b-price">Price <span class="hint">Blank = your pricing rules</span></label>
+        <input id="b-price" type="text" value="${esc(override.price || "")}" placeholder="${esc(setting("pricing.default","5.99"))}"></div>
+      <div class="field"><label for="b-tags">Tags <span class="hint">Comma separated</span></label>
+        <input id="b-tags" type="text" value="${esc((override.tags || []).join(", "))}"></div>
+    </div>
+    <div style="margin-bottom:16px"><label for="b-desc">Description <span class="hint">Your words; the rest of the listing is built around them</span></label>
+      <textarea id="b-desc" style="min-height:150px">${esc(override.description || "")}</textarea></div>
+    <div style="margin-bottom:16px"><label for="b-cover">Cover image <span class="hint">Replaces the one rendered from page 1. JPEG, PNG or WebP, up to 6 MB.</span></label>
+      <input id="b-cover" type="file" accept="image/jpeg,image/png,image/webp" onchange="uploadCover()"></div>
+    <div class="actions"><button class="btn" id="save-book" onclick="saveBook()">Save listing</button>
+      <span class="meta" style="color:var(--muted);font-size:13px">Applies on the next run.</span></div>`;
+
+  $("tab-books").innerHTML = `
+    <div class="card"><h2>Books</h2><div class="list">${list}</div></div>
+    <div class="card"><h2>${BOOK ? esc(BOOK) : "Listing"}</h2>${editor}</div>`;
+}
+
+function pickBook(slug) { BOOK = slug === BOOK ? null : slug; renderBooks(); }
+
+/* ------------------------------------------------------------------ saving */
+async function withButton(id, label, work) {
+  const button = $(id);
+  const original = button.textContent;
+  button.disabled = true;
+  button.innerHTML = `<span class="spin"></span>${label}`;
+  try { await work(); }
+  catch (err) { say(err.message, "bad"); }
+  finally { button.disabled = false; button.textContent = original; }
+}
+
+function num(id) { const v = Number($(id).value); return Number.isFinite(v) ? v : undefined; }
+
+async function saveSchedule() {
+  await withButton("save-schedule", "Saving…", async () => {
+    const days = [...document.querySelectorAll("#s-days input:checked")].map((i) => i.value);
+    const merged = structuredClone(STATE.settings || {});
+    merged.schedule = { ...(merged.schedule || {}),
+      publish_at: $("s-time").value.trim(), timezone: $("s-tz").value.trim(), days,
+      max_per_run: num("s-max"), min_hours_between: num("s-gap"),
+      window_minutes: num("s-window"), settle_minutes: num("s-settle") };
+    merged.pricing = { ...(merged.pricing || {}), default: $("s-price").value.trim() };
+    merged.source = { ...(merged.source || {}), folder_id: $("s-folder").value.trim() };
+    const out = await api("settings", { method: "POST", body: JSON.stringify({ settings: merged }) });
+    STATE.settings = out.settings;
+    say("Saved. It applies on the next run.");
+  });
+}
+
+async function saveMarketing() {
+  await withButton("save-marketing", "Saving…", async () => {
+    const merged = structuredClone(STATE.settings || {});
+    merged.marketing = { ...(merged.marketing || {}),
+      audience: $("m-audience").value.trim(),
+      brand_promise: $("m-promise").value.trim(),
+      guarantees: $("m-guarantees").value.split("\n").map((s) => s.trim()).filter(Boolean),
+      base_tags: $("m-tags").value.split(",").map((s) => s.trim()).filter(Boolean),
+      refund_period: $("m-refund").value,
+      receipt: $("m-receipt").value.trim() };
+    const out = await api("settings", { method: "POST", body: JSON.stringify({ settings: merged }) });
+    STATE.settings = out.settings;
+    say("Saved. It applies on the next run.");
+  });
+}
+
+async function saveBook() {
+  await withButton("save-book", "Saving…", async () => {
+    const book = { name: $("b-name").value, price: $("b-price").value.trim(),
+      description: $("b-desc").value,
+      tags: $("b-tags").value.split(",").map((s) => s.trim()).filter(Boolean) };
+    await api("book", { method: "POST", body: JSON.stringify({ slug: BOOK, book }) });
+    STATE = await api("state");
+    say("Listing saved.");
+    renderBooks();
+  });
+}
+
+async function uploadCover() {
+  const input = $("b-cover");
+  const file = input.files && input.files[0];
+  if (!file) return;
+  say("Uploading the cover…", "info");
+  const reader = new FileReader();
+  reader.onload = async () => {
+    try {
+      await api("artwork", { method: "POST",
+        body: JSON.stringify({ slug: BOOK, kind: "cover", data: reader.result }) });
+      say("Cover uploaded. It will be used on the next run.");
+    } catch (err) { say(err.message, "bad"); }
+    input.value = "";
+  };
+  reader.readAsDataURL(file);
+}
+
+async function triggerRun() {
+  await withButton("run-go", "Starting…", async () => {
+    const out = await api("run", { method: "POST", body: JSON.stringify({
+      command: $("run-cmd").value, slug: $("run-slug").value.trim(),
+      force: $("run-force").checked, dry_run: $("run-dry").checked }) });
+    say("Started. Runs take a minute or two — press Refresh to see the result.", "info");
+    STATE.runs = out.runs || STATE.runs;
+    setTimeout(refresh, 9000);
+  });
+}
+
+async function refresh() {
+  try { STATE = await api("state"); render(); } catch (err) { say(err.message, "bad"); }
+}
+
+/* -------------------------------------------------------------------- boot */
+(async function boot() {
+  try {
+    const session = await api("session");
+    if (!session.configured) {
+      document.body.innerHTML = `<div class="gate"><div class="card" style="max-width:480px">
+        <h1>Almost there</h1>
+        <p class="sub" style="margin-top:8px">This panel needs two environment variables in Vercel —
+        <strong>PANEL_PASSWORD</strong> and <strong>GITHUB_TOKEN</strong> — then a redeploy.
+        See <code>docs/PANEL.md</code> in your repository for the steps.</p></div></div>`;
+      return;
+    }
+    if (session.authed) await load(); else showGate();
+  } catch {
+    showGate();
+  }
+})();
 </script>
 </body>
 </html>

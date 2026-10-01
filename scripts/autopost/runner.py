@@ -51,9 +51,14 @@ def collect(cfg, st):
             new_count += 1
             log.ok(f"new file detected: {source_file.name}  →  {slug}")
 
+    # Panel uploads live in the repo and beat anything in Drive, so they go last.
+    repo_artwork = sources.scan_repo_artwork(ROOT)
+    artwork = list(artwork) + repo_artwork
+
     log.info(
         f"{len(files)} PDF(s) in the folder, {new_count} new since the last run"
         + (f", {len(artwork)} image(s) available as artwork" if artwork else "")
+        + (f" ({len(repo_artwork)} uploaded in the panel)" if repo_artwork else "")
     )
 
     for source_file in files:
