@@ -25,9 +25,10 @@ def collect(cfg, st):
     min_size = float(cfg.get("source.min_size_mb", 0))
     recursive = bool(cfg.get("source.recursive", True))
 
+    artwork = []
     if local_dir:
         log.info(f"scanning local directory {local_dir}")
-        files = sources.scan_local(local_dir, recursive, ignore, min_size)
+        files, artwork = sources.scan_local(local_dir, recursive, ignore, min_size)
     else:
         service = sources.drive_service()
         if service:
@@ -38,7 +39,7 @@ def collect(cfg, st):
                     "(the part of the folder URL after /folders/)."
                 )
             log.info(f"scanning Drive folder {folder}")
-            files = sources.scan_drive(service, folder, recursive, ignore, min_size)
+            files, artwork = sources.scan_drive(service, folder, recursive, ignore, min_size)
         else:
             log.warn("no service account configured — only books.json `link:` entries can be used")
             files = []
@@ -52,6 +53,7 @@ def collect(cfg, st):
 
     log.info(
         f"{len(files)} PDF(s) in the folder, {new_count} new since the last run"
+        + (f", {len(artwork)} image(s) available as artwork" if artwork else "")
     )
 
     for source_file in files:
@@ -69,10 +71,10 @@ def collect(cfg, st):
         if book:
             candidates.append((slug, book.source_file))
 
-    return candidates, service, overrides
+    return candidates, service, overrides, artwork
 
 
-def publish_one(cfg, st, slug, source_file, service, overrides, dry_run, use_ai):
+def publish_one(cfg, st, slug, source_file, service, overrides, dry_run, use_ai, artwork=()):
     """Download, write the listing, build the art, push it, record it."""
     log.step(f"Publishing {slug}")
 
@@ -110,8 +112,20 @@ def publish_one(cfg, st, slug, source_file, service, overrides, dry_run, use_ai)
         log.ok(f"title: {listing['title']}", indent=2)
         log.info(f"tags: {', '.join(listing['tags'])}", indent=2)
 
+        # Artwork the user dropped next to the PDF wins over a render.
+        supplied = {}
+        for kind, image_file in sources.match_artwork(artwork, slug).items():
+            try:
+                if getattr(image_file, "path", None):
+                    supplied[kind] = Path(image_file.path)
+                else:
+                    dest = tmp / image_file.name
+                    supplied[kind] = sources.download_drive(service, image_file.id, dest)
+            except Exception as exc:
+                log.warn(f"could not fetch {image_file.name} ({exc}) — rendering the {kind} instead", indent=2)
+
         art_dir = PREVIEW_DIR if dry_run else tmp
-        images.build(book, pdf_path, art_dir / slug, cfg)
+        images.build(book, pdf_path, art_dir / slug, cfg, supplied=supplied)
         if not dry_run:
             images.save_dashboard_cover(book, cfg)
 
@@ -177,7 +191,7 @@ def run(cfg, force=False, dry_run=False, only_slug="", use_ai=True, scan_only=Fa
     )
 
     log.step("Looking for new files")
-    candidates, service, overrides = collect(cfg, st)
+    candidates, service, overrides, artwork = collect(cfg, st)
 
     if only_slug:
         candidates = [c for c in candidates if c[0] == only_slug]
@@ -227,7 +241,7 @@ def run(cfg, force=False, dry_run=False, only_slug="", use_ai=True, scan_only=Fa
             continue
         try:
             book, overall, failures = publish_one(
-                cfg, st, slug, source_file, service, overrides, dry_run, use_ai
+                cfg, st, slug, source_file, service, overrides, dry_run, use_ai, artwork
             )
             if overall in ("published", "dry-run"):
                 published.append((slug, book))

@@ -20,6 +20,11 @@ from . import log
 
 PDF_MIME = "application/pdf"
 FOLDER_MIME = "application/vnd.google-apps.folder"
+IMAGE_MIMES = ("image/jpeg", "image/png", "image/webp")
+
+# An image dropped beside the PDF overrides the one rendered from page 1.
+# `ocean-buddies.pdf` + `ocean-buddies-cover.jpg` → that JPEG is the cover.
+ART_SUFFIXES = ("cover", "thumbnail", "pin", "social")
 
 
 @dataclass
@@ -101,8 +106,8 @@ def _drive_children(service, folder_id):
 
 
 def scan_drive(service, folder_id, recursive=True, ignore=None, min_size_mb=0.0):
-    """Every usable PDF in the folder, newest upload last."""
-    found, folders, visited = [], [folder_id], set()
+    """(pdfs, images) in the folder. PDFs come back newest upload last."""
+    found, images, folders, visited = [], [], [folder_id], set()
     while folders:
         current = folders.pop(0)
         if current in visited:
@@ -121,10 +126,20 @@ def scan_drive(service, folder_id, recursive=True, ignore=None, min_size_mb=0.0)
                 if recursive:
                     folders.append(f["id"])
                 continue
-            if f.get("mimeType") != PDF_MIME:
-                continue
             if _ignored(f["name"], ignore):
                 log.info(f"skipping {f['name']} (matches an ignore pattern)")
+                continue
+            if f.get("mimeType") in IMAGE_MIMES:
+                images.append(
+                    SourceFile(
+                        id=f["id"],
+                        name=f["name"],
+                        size=int(f.get("size") or 0),
+                        created_at=f.get("createdTime", ""),
+                    )
+                )
+                continue
+            if f.get("mimeType") != PDF_MIME:
                 continue
             size = int(f.get("size") or 0)
             if size < min_size_mb * 1024 * 1024:
@@ -141,7 +156,7 @@ def scan_drive(service, folder_id, recursive=True, ignore=None, min_size_mb=0.0)
                 )
             )
     found.sort(key=lambda f: (f.created_at, f.name))
-    return found
+    return found, images
 
 
 def download_drive(service, file_id, dest):
@@ -165,29 +180,32 @@ def download_drive(service, file_id, dest):
 
 
 def scan_local(directory, recursive=True, ignore=None, min_size_mb=0.0):
+    """(pdfs, images), matching scan_drive."""
     directory = Path(directory)
     if not directory.is_dir():
         log.fail(f"AUTOPOST_LOCAL_DIR points at {directory}, which is not a directory")
-    pattern = "**/*.pdf" if recursive else "*.pdf"
-    found = []
-    for path in sorted(directory.glob(pattern)):
-        if _ignored(path.name, ignore):
+    glob = directory.rglob if recursive else directory.glob
+    found, images = [], []
+    for path in sorted(glob("*")):
+        if not path.is_file() or _ignored(path.name, ignore):
             continue
-        size = path.stat().st_size
-        if size < min_size_mb * 1024 * 1024:
-            log.warn(f"skipping {path.name} — only {size / 1e6:.2f} MB")
-            continue
+        suffix = path.suffix.lower()
         stat = path.stat()
-        found.append(
-            SourceFile(
-                id=f"local:{path.resolve()}",
-                name=path.name,
-                size=size,
-                created_at=str(int(stat.st_mtime)),
-                path=path,
-            )
+        entry = SourceFile(
+            id=f"local:{path.resolve()}",
+            name=path.name,
+            size=stat.st_size,
+            created_at=str(int(stat.st_mtime)),
+            path=path,
         )
-    return found
+        if suffix in (".jpg", ".jpeg", ".png", ".webp"):
+            images.append(entry)
+        elif suffix == ".pdf":
+            if entry.size < min_size_mb * 1024 * 1024:
+                log.warn(f"skipping {path.name} — only {entry.size / 1e6:.2f} MB")
+                continue
+            found.append(entry)
+    return found, images
 
 
 # --------------------------------------------------------------------- links
@@ -205,3 +223,24 @@ def download_link(url, dest):
             "link download failed — is the file shared as 'anyone with the link'?"
         )
     return Path(dest)
+
+
+def match_artwork(images, slug):
+    """Images a user supplied for one book, by filename convention.
+
+    `<slug>-cover.jpg`, `<slug>-thumbnail.png`, `<slug>-pin.jpg`,
+    `<slug>-social.jpg`. A bare `<slug>.jpg` counts as the cover, which is
+    what people reach for first.
+
+    Returns {kind: SourceFile}.
+    """
+    matched = {}
+    for image in images:
+        stem = Path(image.name).stem.strip().lower()
+        if stem == slug:
+            matched.setdefault("cover", image)
+            continue
+        for kind in ART_SUFFIXES:
+            if stem == f"{slug}-{kind}":
+                matched[kind] = image
+    return matched

@@ -155,6 +155,26 @@ python scripts/publish.py --dry-run --force --slug ocean-buddies-coloring
 
 ---
 
+## Using your own cover
+
+Covers are rendered from page 1 of the PDF. To use your own instead, drop an
+image in the same Drive folder, named after the PDF:
+
+```
+ocean-buddies.pdf                 the book
+ocean-buddies-cover.jpg           → the product page cover   (16:9)
+ocean-buddies-thumbnail.jpg       → the grid thumbnail       (1:1)
+ocean-buddies-pin.jpg             → the Pinterest pin        (2:3)
+ocean-buddies-social.jpg          → Instagram / Facebook / X (1:1)
+```
+
+A bare `ocean-buddies.jpg` counts as the cover, which is the usual case.
+JPEG, PNG and WebP all work, and each image is resized to the shape that slot
+needs. Any slot you do not supply is still rendered from the PDF, so you can
+hand-make just the cover and let the rest generate.
+
+---
+
 ## Overriding one book
 
 Auto-detection covers everything. When you want to hand-write a particular

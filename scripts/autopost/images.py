@@ -138,19 +138,53 @@ def _with_caption(page, size, title, kicker):
     return canvas
 
 
-def build(book, pdf_path, out_dir, cfg):
-    """Render every enabled image for one book. Returns {kind: Path}."""
-    if not cfg.get("images.enabled", True):
-        return {}
+def _supplied(book, supplied, out_dir, kind, size, quality):
+    """Fit a user-supplied image to the size this slot needs."""
+    source = (supplied or {}).get(kind)
+    if not source or not Path(source).exists():
+        return None
+    try:
+        from PIL import Image, ImageOps
 
-    page = render_first_page(pdf_path)
-    if page is None:
+        with Image.open(source) as image:
+            fitted = ImageOps.fit(image.convert("RGB"), size, method=Image.LANCZOS)
+        target = Path(out_dir) / f"{book.slug}-{kind}.jpg"
+        fitted.save(target, quality=quality)
+        log.ok(f"{kind}: using your own {Path(source).name}", indent=2)
+        return target
+    except Exception as exc:
+        log.warn(f"could not use {Path(source).name} as the {kind} ({exc}) — rendering one instead", indent=2)
+        return None
+
+
+def build(book, pdf_path, out_dir, cfg, supplied=None):
+    """Render every enabled image for one book. Returns {kind: Path}.
+
+    `supplied` is {kind: Path} of artwork the user dropped in the folder
+    next to the PDF; anything in it wins over the rendered version.
+    """
+    if not cfg.get("images.enabled", True):
         return {}
 
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     quality = int(cfg.get("images.quality", 90))
     made = {}
+
+    for kind in ("cover", "thumbnail", "pin", "social"):
+        own = _supplied(book, supplied, out_dir, kind, cfg.image_size(kind), quality)
+        if own:
+            made[kind] = own
+    if len(made) == 4:
+        book.images = made
+        return made  # nothing left to render, so the PDF is never opened
+
+    page = render_first_page(pdf_path)
+    if page is None:
+        if made:
+            book.images = made
+            return made
+        return {}
 
     kicker = " · ".join(
         part for part in ["Printable PDF", f"{book.pages} pages" if book.pages else "", "Instant download"] if part
@@ -160,38 +194,44 @@ def build(book, pdf_path, out_dir, cfg):
         from PIL import Image
 
         # cover — 16:9, page floated on a blurred backdrop
-        size = cfg.image_size("cover")
-        cover = _backdrop(page, size)
-        _paste_centred(cover, page, (int(size[0] * 0.88), int(size[1] * 0.9)))
-        made["cover"] = out_dir / f"{book.slug}-cover.jpg"
-        cover.save(made["cover"], quality=quality)
+        if "cover" not in made:
+            size = cfg.image_size("cover")
+            cover = _backdrop(page, size)
+            _paste_centred(cover, page, (int(size[0] * 0.88), int(size[1] * 0.9)))
+            made["cover"] = out_dir / f"{book.slug}-cover.jpg"
+            cover.save(made["cover"], quality=quality)
 
         # thumbnail — 1:1, page on plain white so it stays legible when tiny
-        size = cfg.image_size("thumbnail")
-        thumb = Image.new("RGB", size, "white")
-        _paste_centred(thumb, page, (int(size[0] * 0.92), int(size[1] * 0.92)))
-        made["thumbnail"] = out_dir / f"{book.slug}-thumbnail.jpg"
-        thumb.save(made["thumbnail"], quality=quality)
+        if "thumbnail" not in made:
+            size = cfg.image_size("thumbnail")
+            thumb = Image.new("RGB", size, "white")
+            _paste_centred(thumb, page, (int(size[0] * 0.92), int(size[1] * 0.92)))
+            made["thumbnail"] = out_dir / f"{book.slug}-thumbnail.jpg"
+            thumb.save(made["thumbnail"], quality=quality)
 
         # The parenthetical "(Printable PDF, 26 Pages)" is already the kicker
         # line, so the band shows the book's actual name and nothing else.
         caption = book.display_title or book.name
 
         # pin — 2:3 with a title band
-        made["pin"] = out_dir / f"{book.slug}-pin.jpg"
-        _with_caption(page, cfg.image_size("pin"), caption, kicker).save(
-            made["pin"], quality=quality
-        )
+        if "pin" not in made:
+            made["pin"] = out_dir / f"{book.slug}-pin.jpg"
+            _with_caption(page, cfg.image_size("pin"), caption, kicker).save(
+                made["pin"], quality=quality
+            )
 
         # social — 1:1 with a title band
-        made["social"] = out_dir / f"{book.slug}-social.jpg"
-        _with_caption(page, cfg.image_size("social"), caption, kicker).save(
-            made["social"], quality=quality
-        )
+        if "social" not in made:
+            made["social"] = out_dir / f"{book.slug}-social.jpg"
+            _with_caption(page, cfg.image_size("social"), caption, kicker).save(
+                made["social"], quality=quality
+            )
     except Exception as exc:
         log.warn(f"cover art stopped early ({exc}) — publishing with whatever was built")
 
     for kind, path in made.items():
+        if (supplied or {}).get(kind):
+            continue  # already logged as "using your own ..."
         log.ok(f"{kind}: {path.name} ({path.stat().st_size // 1024} KB)", indent=2)
     book.images = made
     return made
