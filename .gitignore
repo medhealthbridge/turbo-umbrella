@@ -1,0 +1,9 @@
+# Dry-run previews — regenerated on demand, never committed.
+out/
+
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+node_modules/

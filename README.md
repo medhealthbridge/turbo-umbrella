@@ -1,162 +1,266 @@
-# gumroad-autopost
+# autopost
 
-Drops a book PDF into Google Drive → it becomes a live Gumroad product the next morning.
+Drop a PDF in a Google Drive folder. It becomes a live, fully-written product
+listing — cover art, marketing copy, tags, receipt, refund policy — plus a
+ready-to-post social pack, on the schedule you set.
+
 Runs entirely in GitHub Actions. No PC, no desktop app, no manual step per book.
 
-**One book per day, oldest first.** Drop five PDFs, they go live over five days.
-Drop nothing, nothing happens (no errors, no empty runs).
+```
+Google Drive                  GitHub Actions (hourly)              Gumroad
+  ocean-buddies.pdf   ──►   notice it's new                  ──►   listing, published
+                            wait for the posting window            cover + thumbnail
+                            read the real page count               tags, summary, receipt
+                            write the listing copy
+                            render cover / thumbnail / pin   ──►   content/social/
+                            record it, rebuild the dashboard       captions + images
+```
 
 ---
 
-## How it works
+## What changed from v1
 
-```
-Google Drive folder          GitHub Actions (daily cron)        Gumroad
-  ligaya-bamboo-poles.pdf  →  match slug in books.json       →  products create
-                              download the PDF                  products publish
-                              record it in state/published.json
-```
+The first version created a product with a name, a price and a description,
+and nothing else. It stalled in draft, and a re-run would have made a
+duplicate. Everything below is new:
 
-Matching is by **filename**: a PDF named `ligaya-bamboo-poles.pdf` is matched to the
-book whose `slug` is `ligaya-bamboo-poles` in `books.json`. Nothing is ever published
-twice, because every success is written into `state/published.json` and committed back.
+| | v1 | now |
+|---|---|---|
+| **New files** | had to be listed in `books.json` first | detected automatically; `books.json` is optional |
+| **Schedule** | a cron line in UTC | `publish_at` + `timezone` in `config.yml`, checked hourly |
+| **Cover art** | none — the usual reason a listing won't leave draft | cover, thumbnail, Pinterest pin and social card, rendered from page 1 |
+| **Copy** | whatever was typed in `books.json` | full listing: hook, what-you-get, guarantees, how-to-print, SEO title, summary, tags, receipt |
+| **Page count** | hard-coded and already wrong | read from the PDF, and stale counts in your own copy are corrected |
+| **Re-runs** | would create a duplicate | finds the existing listing by name and repairs it |
+| **Other platforms** | — | adapter layer; Payhip / Lemon Squeezy / Etsy wired in |
+| **Social** | — | caption + sized image per network, written to the repo |
+| **Visibility** | read the logs | a dashboard page, rebuilt every run |
+| **Tests** | — | `tests/smoke.py`, run in CI on every push |
 
 ---
 
 ## Setup
 
-### 1. Gumroad token (required)
+### 1. Gumroad token
 
-Gumroad → **Settings → Advanced → Applications** → create an application → generate an
-access token. It needs product-edit permission.
+Gumroad → **Settings → Advanced → Applications** → create an application →
+generate an access token (it needs product-edit permission).
 
-Then in this repo: **Settings → Secrets and variables → Actions → New repository secret**
+Repo → **Settings → Secrets and variables → Actions → New repository secret**:
 
 | Name | Value |
 |---|---|
-| `GUMROAD_ACCESS_TOKEN` | the token you just generated |
+| `GUMROAD_ACCESS_TOKEN` | the token |
 
-### 2. Google Drive access (pick ONE)
+### 2. Google Drive access
 
-**Option A — service account (recommended, fully hands-off)**
+1. <https://console.cloud.google.com/> → create a project (any name).
+2. **APIs & Services → Library** → "Google Drive API" → **Enable**.
+3. **Credentials → Create credentials → Service account** → name it, skip the
+   optional steps, Done.
+4. Click it → **Keys → Add key → Create new key → JSON**. A file downloads.
+5. Add the whole file as the secret `GOOGLE_SERVICE_ACCOUNT_JSON` (paste
+   everything, including the outer `{ }`).
+6. In that JSON find `"client_email"` — something like
+   `name@project.iam.gserviceaccount.com`. **Share your Drive books folder
+   with that address** (Viewer is enough). This step is the one people miss.
+7. The folder is already set in `config.yml` as
+   `161VeirIHlTqbRb3__oURDOMVVRv4KD3N`. To watch a different one, change
+   `source.folder_id` there.
 
-1. Go to <https://console.cloud.google.com/> → create a project (any name).
-2. **APIs & Services → Library** → search "Google Drive API" → **Enable**.
-3. **APIs & Services → Credentials → Create credentials → Service account**. Name it
-   anything, skip the optional role steps, click Done.
-4. Click the new service account → **Keys → Add key → Create new key → JSON**. A file
-   downloads.
-5. Open that JSON file, copy **all** of it.
-6. In this repo: **Settings → Secrets → Actions → New repository secret**
+### 3. Optional — Claude writes the copy
 
-   | Name | Value |
-   |---|---|
-   | `GOOGLE_SERVICE_ACCOUNT_JSON` | paste the entire JSON file contents |
+Add `ANTHROPIC_API_KEY` as a secret and the hook, summary, tags and social
+captions get a rewrite pass. Without it you still get a complete listing;
+the generator is deterministic and needs no key.
 
-7. In the same JSON, find `"client_email"` — it looks like
-   `something@your-project.iam.gserviceaccount.com`. In Google Drive, **share your
-   books folder with that email address** (Viewer is enough).
-8. Open that Drive folder and copy the folder ID from the URL:
-   `drive.google.com/drive/folders/`**`THIS_PART`**
+### 4. Turn on the control panel and the scheduler
 
-   Then in this repo: **Settings → Secrets and variables → Actions → Variables tab →
-   New repository variable**
+You run the shop from a web page: a calendar, every listing, covers, the
+schedule and the copy, all saved in your Neon database. You never open the
+code. **`docs/PANEL.md` walks through the one-time setup**: a GitHub token,
+`DATABASE_URL` in GitHub and Vercel, a panel password, and one `neon deploy`
+for the scheduler.
 
-   | Name | Value |
-   |---|---|
-   | `GDRIVE_FOLDER_ID` | the folder ID |
+---
 
-Done. From now on you only ever drop PDFs into that Drive folder.
+## First run
 
-**Option B — share links (no setup, good for a first test)**
+**Actions → Publish → Run workflow**, with `command: run`, `dry_run: ✓`,
+`force: ✓`.
 
-Skip the service account. Instead, set a PDF to "Anyone with the link can view" in Drive,
-then add a `"link"` field to that book in `books.json`:
+Nothing is sent. Download the **previews** artifact from the run page and
+check the cover, the thumbnail and the Pinterest pin. The log shows the exact
+listing that would be created.
+
+Then run it again with `dry_run` off. It will find any existing draft of the
+same name and repair it rather than creating a second one.
+
+---
+
+## Day to day
+
+You drop PDFs in the Drive folder. That is the whole workflow.
+
+The filename becomes the slug and the title:
+`ocean-buddies-coloring.pdf` → `Ocean Buddies Coloring`. Anything with
+`draft`, `wip`, `test` or `copy of` in the name is skipped, so
+work-in-progress can live in the same folder.
+
+Everything else happens in **the panel**: schedule a book for a date and a
+time, edit any listing, upload a cover, change the posting time, days, prices
+and copy, and copy each book's ready-made social posts.
+
+`config.yml` still holds the documented defaults. Whatever you set in the
+panel is stored in the database and overrides it.
+
+### Run it by hand
+
+From the panel's Overview tab, or **Actions → Publish → Run workflow**:
+
+| Command | What it does |
+|---|---|
+| `run` | the normal cycle (this is what the hourly schedule uses) |
+| `scan` | notice new files, publish nothing |
+| `plan` | print the schedule, the config and the queue |
+| `dashboard` | rebuild the status page from existing state |
+
+`slug` publishes one specific book. `force` ignores the schedule window.
+`dry_run` builds everything and sends nothing.
+
+Locally, the same thing:
+
+```bash
+pip install -r requirements.txt
+python scripts/publish.py plan
+python scripts/publish.py --dry-run --force --slug ocean-buddies-coloring
+```
+
+---
+
+## Using your own cover
+
+Covers are rendered from page 1 of the PDF. To use your own instead, drop an
+image in the same Drive folder, named after the PDF:
+
+```
+ocean-buddies.pdf                 the book
+ocean-buddies-cover.jpg           → the product page cover   (16:9)
+ocean-buddies-thumbnail.jpg       → the grid thumbnail       (1:1)
+ocean-buddies-pin.jpg             → the Pinterest pin        (2:3)
+ocean-buddies-social.jpg          → Instagram / Facebook / X (1:1)
+```
+
+A bare `ocean-buddies.jpg` counts as the cover, which is the usual case.
+JPEG, PNG and WebP all work, and each image is resized to the shape that slot
+needs. Any slot you do not supply is still rendered from the PDF, so you can
+hand-make just the cover and let the rest generate.
+
+---
+
+## Overriding one book
+
+Auto-detection covers everything. When you want to hand-write a particular
+listing, add an entry to `books.json` matched by `slug` — every field is
+optional, and anything you leave out is generated:
 
 ```json
 {
-  "slug": "ligaya-bamboo-poles",
-  "name": "...",
-  "price": "5.99",
-  "link": "https://drive.google.com/file/d/FILE_ID_HERE/view"
+  "slug": "ocean-buddies-coloring",
+  "name": "Ocean Buddies Coloring Book for Kids Ages 3-5",
+  "price": "4.99",
+  "description": "Dive into 25 big, bold coloring pages…",
+  "tags": ["coloring book", "ocean", "preschool"]
 }
 ```
 
-Downside: you have to paste a link per book, and the file is publicly downloadable while
-it's shared. Fine for testing, not for the long run.
+A `"link"` field still works for a book that is not in the Drive folder.
 
-### 3. Name your PDFs to match
+---
 
-Valid filenames are the `slug` values in `books.json` plus `.pdf`. For example:
+## Social
+
+Every publish writes `content/social/<slug>/`:
 
 ```
-theo-bike-yet.pdf
-ligaya-bamboo-poles.pdf
-mei-painted-blessing.pdf
-sora-paper-crane.pdf
+pinterest.txt   caption + hashtags + the product URL, ready to paste
+instagram.txt
+facebook.txt
+x.txt
+pin.jpg         1000×1500, the ratio Pinterest wants
+social.jpg      1080×1080
+pack.json       the same thing as data
 ```
 
-A PDF whose name doesn't match any slug is simply ignored — nothing breaks.
+These are committed, so they are on your phone in the GitHub app. Posting is
+deliberately manual for now: Instagram, TikTok and Pinterest all require a
+reviewed app and a business account before an API will accept a post, which
+is weeks of setup for something that takes ninety seconds by hand.
+
+When you are ready to automate one, the copy and images are already there —
+see `docs/PLATFORMS.md`.
 
 ---
 
-## Test it before trusting it
+## Adding a selling platform
 
-**Actions** tab → *Publish next book to Gumroad* → **Run workflow**:
-
-1. First run with **dry run = true**. This downloads the PDF and prints the exact
-   Gumroad command it *would* run, without creating anything. Confirms Drive access works.
-2. Then run with dry run off, optionally typing one `slug` to force a specific book.
-3. Check the log. If it published, you'll see the product ID and URL at the end.
-
----
-
-## Prices
-
-Every book is set to **$5.99** (storybooks) or **$4.99** (coloring books) in `books.json`.
-Review these before the first real run — edit the `price` field and commit.
-
-Before settling on a price it's worth running `gumroad products comps` locally to see
-what comparable printables sell for.
+`platforms:` in `config.yml` lists Gumroad (live), plus Payhip, Lemon Squeezy
+and Etsy, which are wired in and waiting on an implementation. Turning one on
+without one gives a clear message rather than a crash. `docs/PLATFORMS.md`
+walks through writing one — it is one class with one method, because the
+scheduling, copy, cover art and state tracking are already shared.
 
 ---
 
-## Changing the schedule
+## When something goes wrong
 
-In `.github/workflows/publish.yml`:
+The dashboard's **Needs attention** section, and the run's summary on the
+Actions page, both say what happened. Common ones:
 
-```yaml
-- cron: "13 1 * * *"   # 01:13 UTC = 09:13 Singapore/Manila
-```
-
-Cron is always UTC. For a different local time, subtract 8 hours.
-To pause the automation entirely: **Actions** tab → select the workflow → **Disable**.
-
----
-
-## Known unknown
-
-Gumroad's *public* REST API does not support creating products (it returns 404 —
-creation is dashboard-only). The **CLI** does have a `products create` command, which is
-what this automation calls. What hasn't been verified is whether that CLI command works
-with only an API token in a headless CI environment, or whether it needs a
-browser-authenticated session.
-
-**The dry run and first real run will tell you.** If `products create` rejects the token,
-the fallback is a [self-hosted runner](https://docs.github.com/en/actions/hosting-your-own-runners)
-on your own PC — the workflow stays exactly the same, it just executes on your machine
-whenever it's switched on, still with no input from you.
-
----
-
-## Files
-
-| Path | What it is |
+| Symptom | Cause |
 |---|---|
-| `books.json` | Every book's title, price, description, tags. Edit freely. |
-| `scripts/publish.py` | Finds the next book, downloads it, creates + publishes it. |
-| `.github/workflows/publish.yml` | The daily cron and the manual "Run workflow" button. |
-| `state/published.json` | Written by the job. The record of what's already live. Don't edit by hand. |
+| "could not read Drive folder" | the folder is not shared with the service account's `client_email` |
+| "only 0.01 MB, looks like a partial upload" | the upload had not finished; it will be picked up next hour |
+| "too early / too late" | working as intended — outside the window in `config.yml`. Use `force` to publish now |
+| "only Nh since the last publish" | `min_hours_between` is doing its job |
+| a product stuck in draft | almost always a missing cover — check the previews artifact from a dry run |
 
-**Keep this repository private.** The workflow itself is harmless, but the token secret
-and your publishing pipeline shouldn't be public.
+Nothing is ever published twice: every attempt is recorded in
+`state/published.json`, and a listing is looked up by name on the platform
+before anything is created.
+
+---
+
+## Layout
+
+```
+config.yml              documented defaults (the panel overrides them)
+db/schema.sql           the database, shared by the publisher and the panel
+neon.ts                 the Neon scheduler function + its 5-minute trigger
+neon/scheduler.ts       starts a publish run when a calendar post is due
+api/                    the panel's API (Vercel), on Neon
+docs/index.html         the control panel itself
+books.json              imported into the database once, then unused
+scripts/publish.py      entry point
+scripts/autopost/
+  config.py             config.yml + defaults + env overrides
+  scheduler.py          is this the moment to publish?
+  sources.py            Drive / local / link
+  metadata.py           filename → book, PDF → page count
+  marketing.py          the listing copy, SEO and captions
+  images.py             cover, thumbnail, pin, social card
+  platforms/            gumroad.py + the adapter layer
+  social.py             the ready-to-post packs
+  dashboard.py          the status page
+  store.py              Postgres (DATABASE_URL) or JSON files, one interface
+  state.py              what we have seen and published
+  runner.py             one run: calendar posts first, then the daily slot
+state/                  only used when there is no database
+docs/status.json        a snapshot written after every run
+content/social/         the social packs
+assets/artwork/         covers uploaded in the panel
+tests/                  end-to-end tests, run on JSON files and on Postgres
+```
+
+Still manual on Gumroad, because its CLI has no flag for them: the
+"Additional details" rows and the receipt *button* text.

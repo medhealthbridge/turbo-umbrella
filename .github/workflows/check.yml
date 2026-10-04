@@ -1,0 +1,74 @@
+name: Check
+
+# Runs every test, twice over: once with plain JSON files and once against a
+# real Postgres, the way production runs on Neon. No network to the outside,
+# no secrets, nothing published — safe on every push and PR.
+
+on:
+  push:
+    branches: [main]
+    paths: &watched
+      - "scripts/**"
+      - "api/**"
+      - "neon/**"
+      - "neon.ts"
+      - "db/**"
+      - "docs/index.html"
+      - "config.yml"
+      - "tests/**"
+      - "requirements*.txt"
+      - "package.json"
+      - "package-lock.json"
+      # The workflows themselves: a change to a runner image, an action
+      # version or a step has to be verified too, and only this job can do it.
+      - ".github/workflows/**"
+  pull_request:
+    paths: *watched
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+
+    env:
+      AUTOPOST_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: pip install --quiet -r requirements.txt -r requirements-dev.txt
+      - run: npm ci --no-audit --no-fund
+
+      - name: Compile every module
+        run: python -m compileall -q scripts
+      - name: Validate config.yml
+        run: python scripts/publish.py plan
+
+      - name: Publisher — JSON files
+        run: AUTOPOST_TEST_DATABASE_URL= python tests/smoke.py
+      - name: Publisher — Postgres
+        run: python tests/smoke.py
+      - name: Control panel API + Neon scheduler — Postgres
+        run: npm test
+
+      - name: The scheduler bundles the way `neon deploy` will bundle it
+        run: npx esbuild neon/scheduler.ts --bundle --platform=node --format=esm --outfile=/tmp/scheduler.mjs --log-level=warning
