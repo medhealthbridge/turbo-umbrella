@@ -102,7 +102,11 @@ jobs:
           set -euo pipefail
           git config user.name "autopost"
           git config user.email "actions@github.com"
-          git add -A state docs content 2>/dev/null || true
+          # Add each path separately: `git add` rejects the whole command if
+          # any one path is missing, which would silently commit nothing.
+          for path in state docs content; do
+            if [ -e "$path" ]; then git add -A -- "$path"; fi
+          done
           if git diff --cached --quiet; then
             echo "Nothing changed."
             exit 0

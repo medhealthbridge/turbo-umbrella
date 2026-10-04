@@ -339,6 +339,11 @@ def main():
         check("run succeeded", second.returncode == 0)
         check("nothing new was published", "nothing new to publish" in second.stdout)
         check("still exactly one product", len(products()) == 1, f"{len(products())} products")
+        if backend.name == "files":
+            status = repo / "docs" / "status.json"
+            before = status.read_bytes()
+            run("--force")
+            check("an idle run leaves status.json untouched (no hourly commit)", status.read_bytes() == before)
 
         print("\n3. a crashed run is repaired, not duplicated")
         backend.mark_all_failed()

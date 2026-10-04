@@ -65,6 +65,19 @@ def build(cfg, st, queue=None, output=None):
 
     where = store.get()
     if where.kind == "files":
+        # The run log, the timestamp and the next window change every hour even
+        # when nothing happened. Rewriting the file for those alone would mean
+        # a commit — and a redeploy — every hour, so only real changes count.
+        volatile = ("generated_at", "next_window", "log")
+        if target.exists():
+            try:
+                previous = json.loads(target.read_text(encoding="utf-8"))
+            except json.JSONDecodeError:
+                previous = {}
+            if {k: v for k, v in previous.items() if k not in volatile} == \
+               {k: v for k, v in snapshot.items() if k not in volatile}:
+                log.info("status unchanged — nothing to write", indent=1)
+                return target
         target.write_text(json.dumps(snapshot, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         try:
             shown = target.relative_to(ROOT)
