@@ -77,6 +77,11 @@ jobs:
           # Neon. With it, settings, listings, the calendar and every result
           # live in the database and this run commits nothing to the repo.
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # Etsy (only when platforms.etsy.enabled is true — docs/ETSY.md).
+          ETSY_API_KEY: ${{ secrets.ETSY_API_KEY }}
+          ETSY_SHARED_SECRET: ${{ secrets.ETSY_SHARED_SECRET }}
+          ETSY_SHOP_ID: ${{ secrets.ETSY_SHOP_ID }}
+          ETSY_REFRESH_TOKEN: ${{ secrets.ETSY_REFRESH_TOKEN }}
           # Optional. Without it the listing copy is still written in full,
           # just without the Claude polish pass.
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

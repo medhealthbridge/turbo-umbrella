@@ -5,6 +5,7 @@ there too — the scheduler, copy and cover art are already shared.
 """
 
 from .base import NotYetConnected, Platform, Result
+from .etsy import Etsy
 from .gumroad import Gumroad
 
 
@@ -23,16 +24,6 @@ class LemonSqueezy(NotYetConnected):
     label = "Lemon Squeezy"
     required_secrets = ("LEMONSQUEEZY_API_KEY", "LEMONSQUEEZY_STORE_ID")
     how_to = "Lemon Squeezy products are created through its JSON:API v1."
-
-
-class Etsy(NotYetConnected):
-    name = "etsy"
-    label = "Etsy"
-    required_secrets = ("ETSY_API_KEY", "ETSY_SHOP_ID")
-    how_to = (
-        "Etsy's v3 API needs an OAuth app that Etsy reviews by hand, and "
-        "digital listings need a shop that is already open."
-    )
 
 
 REGISTRY = {p.name: p for p in (Gumroad, Payhip, LemonSqueezy, Etsy)}

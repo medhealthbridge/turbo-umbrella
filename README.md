@@ -88,6 +88,10 @@ for the scheduler.
 
 A Vercel Cron job writes a morning summary of your Gumroad sales, three promo drafts and a template idea to `/admin`. Drafts only; nothing is posted. See `docs/DAILY.md`.
 
+## Etsy
+
+Etsy is built in but off by default. Setup and requirements are in `docs/ETSY.md`.
+
 ## First run
 
 **Actions → Publish → Run workflow**, with `command: run`, `dry_run: ✓`,

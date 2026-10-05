@@ -190,8 +190,13 @@ platforms:
     enabled: false         # needs secrets: LEMONSQUEEZY_API_KEY, LEMONSQUEEZY_STORE_ID
 
   etsy:
-    enabled: false         # needs secrets: ETSY_API_KEY, ETSY_SHOP_ID
-                           # note: Etsy digital listings need manual review the first time
+    enabled: false         # setup: docs/ETSY.md
+    # Needs secrets: ETSY_API_KEY, ETSY_SHOP_ID, ETSY_REFRESH_TOKEN
+    # (and ETSY_SHARED_SECRET if Etsy shows one next to your key).
+    publish: false         # false = leave it as a draft for you to check; true = activate it
+    taxonomy_id: null      # REQUIRED: the category number. See docs/ETSY.md.
+    who_made: i_did        # i_did | someone_else | collective
+    when_made: made_to_order
 
 
 # ==================================================================

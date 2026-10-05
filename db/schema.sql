@@ -95,3 +95,12 @@ create table if not exists autopost_daily_reports (
   created_at  timestamptz not null default now(),
   report      jsonb not null
 )
+
+-- ;;
+-- Rotating OAuth credentials a platform must keep between runs (Etsy hands out
+-- a new refresh token each time it is used). Never returned by the panel API.
+create table if not exists autopost_credentials (
+  name        text primary key,
+  value       text not null,
+  updated_at  timestamptz not null default now()
+)

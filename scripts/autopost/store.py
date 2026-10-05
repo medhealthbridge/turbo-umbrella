@@ -185,6 +185,12 @@ class FileStore:
 
     # runs ------------------------------------------------------------------
 
+    def credential(self, name):
+        return None  # plain files must never hold a secret
+
+    def set_credential(self, name, value):
+        return False
+
     def save_run(self, snapshot):
         target = ROOT / "docs" / "status.json"
         _write_json(target, snapshot)
@@ -439,6 +445,20 @@ class PgStore:
 
     def note_post_error(self, post_id, error):
         self.q("update autopost_schedule set last_error = %s where id = %s", (error, post_id))
+
+    # credentials -----------------------------------------------------------
+
+    def credential(self, name):
+        rows = self.q("select value from autopost_credentials where name = %s", (name,))
+        return rows[0]["value"] if rows else None
+
+    def set_credential(self, name, value):
+        self.q(
+            "insert into autopost_credentials (name, value) values (%s, %s) "
+            "on conflict (name) do update set value = excluded.value, updated_at = now()",
+            (name, value),
+        )
+        return True
 
     # runs ------------------------------------------------------------------
 

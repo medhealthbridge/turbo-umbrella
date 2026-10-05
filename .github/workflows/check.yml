@@ -68,6 +68,8 @@ jobs:
         run: AUTOPOST_TEST_DATABASE_URL= python tests/smoke.py
       - name: Publisher — Postgres
         run: python tests/smoke.py
+      - name: Etsy platform — mock API + Postgres
+        run: python tests/etsy_test.py
       - name: Control panel API + Neon scheduler — Postgres
         run: npm test
 
