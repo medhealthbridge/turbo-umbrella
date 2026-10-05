@@ -84,3 +84,14 @@ create table if not exists autopost_runs (
   summary      jsonb not null default '{}'::jsonb,
   log          jsonb not null default '[]'::jsonb
 )
+-- ;;
+-- The daily Gumroad report written by the Vercel cron (api/cron/daily.js) and
+-- shown on /admin. One row per day in the shop's time zone: running the cron
+-- twice in a day, whether by hand or because the platform delivered the event
+-- twice, replaces that day's report instead of piling up duplicates.
+-- It holds aggregates and drafts only. No buyer emails, no raw sales.
+create table if not exists autopost_daily_reports (
+  day         date primary key,
+  created_at  timestamptz not null default now(),
+  report      jsonb not null
+)

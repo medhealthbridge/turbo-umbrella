@@ -19,6 +19,7 @@ on:
       - "requirements*.txt"
       - "package.json"
       - "package-lock.json"
+      - "vercel.json"
       # The workflows themselves: a change to a runner image, an action
       # version or a step has to be verified too, and only this job can do it.
       - ".github/workflows/**"

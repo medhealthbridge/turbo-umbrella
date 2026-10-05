@@ -7,3 +7,8 @@ __pycache__/
 venv/
 
 node_modules/
+
+# Local secrets. Real values live in Vercel's environment variables.
+.env
+.env.*
+!.env.example

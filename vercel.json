@@ -28,6 +28,22 @@
     "api/*.js": {
       "includeFiles": "db/schema.sql",
       "maxDuration": 30
+    },
+    "api/cron/daily.js": {
+      "includeFiles": "db/schema.sql",
+      "maxDuration": 60
     }
-  }
+  },
+  "rewrites": [
+    {
+      "source": "/admin",
+      "destination": "/api/admin"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/daily",
+      "schedule": "0 0 * * *"
+    }
+  ]
 }
