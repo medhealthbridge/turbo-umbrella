@@ -7,6 +7,7 @@ there too — the scheduler, copy and cover art are already shared.
 from .base import NotYetConnected, Platform, Result
 from .etsy import Etsy
 from .gumroad import Gumroad
+from .raketph import RaketPH
 
 
 class Payhip(NotYetConnected):
@@ -26,7 +27,7 @@ class LemonSqueezy(NotYetConnected):
     how_to = "Lemon Squeezy products are created through its JSON:API v1."
 
 
-REGISTRY = {p.name: p for p in (Gumroad, Payhip, LemonSqueezy, Etsy)}
+REGISTRY = {p.name: p for p in (Gumroad, Payhip, LemonSqueezy, Etsy, RaketPH)}
 
 
 def enabled(cfg, dry_run=False):

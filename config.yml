@@ -189,6 +189,11 @@ platforms:
   lemonsqueezy:
     enabled: false         # needs secrets: LEMONSQUEEZY_API_KEY, LEMONSQUEEZY_STORE_ID
 
+  raketph:
+    enabled: false         # no API: writes a listing to paste by hand. docs/RAKETPH.md
+    # currency: PHP        # label only; set price: to override the Gumroad price
+    # price: 249
+
   etsy:
     enabled: false         # setup: docs/ETSY.md
     # Needs secrets: ETSY_API_KEY, ETSY_SHOP_ID, ETSY_REFRESH_TOKEN

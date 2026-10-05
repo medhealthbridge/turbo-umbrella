@@ -157,6 +157,17 @@ def main():
             check("ETSY_SHOP_ID" in str(exc), "a missing secret is named")
         os.environ["ETSY_SHOP_ID"] = saved
 
+        print("raket.ph")
+        from autopost.platforms import raketph as rk
+        rk.ROOT = tmp
+        cfg = config.Config({"platforms": {"raketph": {"enabled": True, "price": 249}}})
+        book.source_file = SimpleNamespace(id="DRIVEID123")
+        r = rk.RaketPH(cfg).publish(book, pdf)
+        text = (tmp / "content/raketph/animal-friends/listing.md").read_text()
+        check(r["status"] == "draft" and (tmp / "content/raketph/animal-friends/cover.jpg").exists(), "a listing and cover are written")
+        check("249" in text and "drive.google.com/file/d/DRIVEID123" in text and "<" not in text, "price, Drive link, plain text")
+        rk.RaketPH(cfg, dry_run=True).publish(book, pdf)
+
         print("dry run")
         before = len(mock.calls)
         p = platform()
