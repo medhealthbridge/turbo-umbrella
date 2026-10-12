@@ -111,6 +111,9 @@ marketing:
   # Who you are writing for. Shapes wording throughout.
   audience: "parents, grandparents and teachers of kids aged 3-8"
 
+  # Your shop's name, signed at the bottom of every listing. Blank = none.
+  shop_name: "Crayon & Giggles"
+
   # Your shop's promise, used in the closing block of every listing.
   brand_promise: "Printable activity books that keep kids off screens and proud of themselves."
 
@@ -184,13 +187,13 @@ platforms:
     publish: true          # false = create the draft but leave it unpublished
 
   payhip:
-    enabled: false         # needs secret: PAYHIP_API_KEY
+    enabled: true          # no product API: writes a listing to paste by hand. docs/MANUAL-STORES.md
 
   lemonsqueezy:
-    enabled: false         # needs secrets: LEMONSQUEEZY_API_KEY, LEMONSQUEEZY_STORE_ID
+    enabled: true          # no product-create API: writes a listing to paste by hand. docs/MANUAL-STORES.md
 
   raketph:
-    enabled: false         # no API: writes a listing to paste by hand. docs/RAKETPH.md
+    enabled: true          # no API: writes a listing to paste by hand. docs/RAKETPH.md
     # currency: PHP        # label only; set price: to override the Gumroad price
     # price: 249
 

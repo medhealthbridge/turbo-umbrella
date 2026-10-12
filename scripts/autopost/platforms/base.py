@@ -19,7 +19,7 @@ class Result(dict):
 
     @property
     def ok(self):
-        return self["status"] in ("published", "draft", "skipped")
+        return self["status"] in ("published", "draft", "prepared", "skipped")
 
 
 class Platform:

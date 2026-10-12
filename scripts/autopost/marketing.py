@@ -226,6 +226,9 @@ def build_description(book, cfg):
     )
     if promise:
         parts.append(f"<p>{_esc(promise)}</p>")
+    shop = cfg.get("marketing.shop_name", "")
+    if shop:
+        parts.append(f"<p>— {_esc(shop)}</p>")
     return "".join(parts)
 
 

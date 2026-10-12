@@ -172,7 +172,8 @@ def publish_one(cfg, st, slug, source_file, service, overrides, dry_run, use_ai,
             overall = "dry-run"
         elif not results:
             overall = "failed"
-        elif statuses <= {"published", "skipped"}:
+        # "prepared" = a manual store's listing is written and waiting for you.
+        elif statuses <= {"published", "skipped", "prepared"}:
             overall = "published"
         elif "published" in statuses or "draft" in statuses:
             overall = "partial"

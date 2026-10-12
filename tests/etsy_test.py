@@ -159,14 +159,25 @@ def main():
 
         print("raket.ph")
         from autopost.platforms import raketph as rk
-        rk.ROOT = tmp
+        from autopost.platforms import manual as _m
+        _m.ROOT = tmp
         cfg = config.Config({"platforms": {"raketph": {"enabled": True, "price": 249}}})
         book.source_file = SimpleNamespace(id="DRIVEID123")
         r = rk.RaketPH(cfg).publish(book, pdf)
         text = (tmp / "content/raketph/animal-friends/listing.md").read_text()
-        check(r["status"] == "draft" and (tmp / "content/raketph/animal-friends/cover.jpg").exists(), "a listing and cover are written")
+        check(r["status"] == "prepared" and (tmp / "content/raketph/animal-friends/cover.jpg").exists(), "a listing and cover are written")
         check("249" in text and "drive.google.com/file/d/DRIVEID123" in text and "<" not in text, "price, Drive link, plain text")
         rk.RaketPH(cfg, dry_run=True).publish(book, pdf)
+
+        print("payhip / lemon squeezy")
+        from autopost.platforms import payhip as ph, lemonsqueezy as ls, manual as mn
+        mn.ROOT = tmp
+        for mod, cls, nm in ((ph, ph.Payhip, "payhip"), (ls, ls.LemonSqueezy, "lemonsqueezy")):
+            c = config.Config({"platforms": {nm: {"enabled": True}}})
+            rr = cls(c).publish(book, pdf)
+            body = (tmp / f"content/{nm}/animal-friends/listing.md").read_text()
+            check(rr["status"] == "prepared" and "Upload the PDF" in body and "drive.google" not in body, f"{nm}: listing written, PDF is uploaded not linked")
+            check(cls(c).missing_secrets() == [], f"{nm}: needs no secrets")
 
         print("dry run")
         before = len(mock.calls)
